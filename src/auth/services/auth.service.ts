@@ -5,6 +5,7 @@ import { JwtService } from '@nestjs/jwt';
 import { OtpService } from './otp.service';
 import { OTPEnum } from '../types/otp-type.enum';
 import * as bcrypt from 'bcrypt';
+import { UserPayload } from 'src/lib/types';
 
 @Injectable()
 export class AuthService {
@@ -13,7 +14,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly otpService: OtpService,
     private readonly dataSource: DataSource,
-  ) { }
+  ) {}
 
   /**
    * Usado por LocalStrategy
@@ -43,7 +44,7 @@ export class AuthService {
   /**
    * Usado por AuthController después del guard
    */
-  async login(user: any) {
+  login(user: UserPayload) {
     const payload = {
       sub: user.id,
       email: user.email,
@@ -61,23 +62,35 @@ export class AuthService {
     await queryRunner.startTransaction();
 
     try {
-      const existingUser = await this.usersService.findByUsernameOrEmail(username, email);
+      const existingUser = await this.usersService.findByUsernameOrEmail(
+        username,
+        email,
+      );
 
       if (existingUser) {
-        if (existingUser.username === username) throw new BadRequestException('El nombre de usuario ya está registrado');
-        if (existingUser.email === email) throw new BadRequestException('El correo electrónico ya está registrado');
+        if (existingUser.username === username)
+          throw new BadRequestException(
+            'El nombre de usuario ya está registrado',
+          );
+        if (existingUser.email === email)
+          throw new BadRequestException(
+            'El correo electrónico ya está registrado',
+          );
         throw new BadRequestException('El usuario o correo ya existe');
       }
 
       const hashedPassword = await bcrypt.hash(password, 10);
 
-      const user = await this.usersService.create({
-        username,
-        email,
-        password: hashedPassword,
-        is_active: true,
-        email_verified: false,
-      }, queryRunner.manager);
+      const user = await this.usersService.create(
+        {
+          username,
+          email,
+          password: hashedPassword,
+          is_active: true,
+          email_verified: false,
+        },
+        queryRunner.manager,
+      );
 
       await this.otpService.sendOTP(email, OTPEnum.VERIFICATION);
 
@@ -92,5 +105,4 @@ export class AuthService {
       await queryRunner.release();
     }
   }
-
 }

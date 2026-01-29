@@ -7,10 +7,12 @@ import { MailModule } from './mail/mail.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ // carga las variables de entorno, y con isglobal se carga en toda la app
+    ConfigModule.forRoot({
+      // carga las variables de entorno, y con isglobal se carga en toda la app
       isGlobal: true,
     }),
-    TypeOrmModule.forRootAsync({ // Configuracion de typeorm
+    TypeOrmModule.forRootAsync({
+      // Configuracion de typeorm
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
@@ -29,4 +31,4 @@ import { MailModule } from './mail/mail.module';
     MailModule,
   ],
 })
-export class AppModule { }
+export class AppModule {}

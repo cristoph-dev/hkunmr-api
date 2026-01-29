@@ -1,4 +1,4 @@
-import { Controller, Post, UseGuards, Request, Body, Get } from '@nestjs/common';
+import { Controller, Post, UseGuards, Request, Body } from '@nestjs/common';
 import { ApiOperation, ApiBody, ApiTags, ApiResponse } from '@nestjs/swagger';
 
 import { AuthService } from '../services/auth.service';
@@ -9,7 +9,7 @@ import type { AuthenticatedRequest } from 'src/lib/types';
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) { }
+  constructor(private readonly authService: AuthService) {}
 
   @UseGuards(LocalAuthGuard)
   @Post('login')
@@ -24,7 +24,7 @@ export class AuthController {
       },
     },
   })
-  async login(@Request() req: AuthenticatedRequest) {
+  login(@Request() req: AuthenticatedRequest) {
     // req.user viene desde LocalStrategy
     return this.authService.login(req.user);
   }
@@ -43,7 +43,10 @@ export class AuthController {
     },
   })
   @ApiResponse({ status: 201, description: 'Usuario creado correctamente' })
-  @ApiResponse({ status: 400, description: 'Datos inválidos o usuario ya existe' })
+  @ApiResponse({
+    status: 400,
+    description: 'Datos inválidos o usuario ya existe',
+  })
   async register(@Body() registerDto: RegisterDto) {
     const { username, password, email } = registerDto;
     return this.authService.register(username, password, email);

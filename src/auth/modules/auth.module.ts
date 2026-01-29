@@ -28,7 +28,7 @@ import { OtpService } from '../services/otp.service';
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: async (configService: ConfigService) => ({
+      useFactory: (configService: ConfigService) => ({
         secret: configService.get<string>('JWT_SECRET_KEY'),
         signOptions: { expiresIn: '8d' },
       }),
@@ -38,4 +38,4 @@ import { OtpService } from '../services/otp.service';
   providers: [AuthService, OtpService, LocalStrategy, JwtStrategy],
   exports: [JwtModule, OtpService],
 })
-export class AuthModule { }
+export class AuthModule {}

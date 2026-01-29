@@ -8,7 +8,7 @@ export class UsersService {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
-  ) { }
+  ) {}
 
   async findByEmail(email: string): Promise<User | null> {
     return this.userRepository.findOne({
@@ -22,12 +22,12 @@ export class UsersService {
     });
   }
 
-  async findByUsernameOrEmail(username: string, email: string): Promise<User | null> {
+  async findByUsernameOrEmail(
+    username: string,
+    email: string,
+  ): Promise<User | null> {
     return this.userRepository.findOne({
-      where: [
-        { username },
-        { email }
-      ],
+      where: [{ username }, { email }],
     });
   }
 
@@ -37,8 +37,14 @@ export class UsersService {
     return repo.save(user);
   }
 
-  async activateUser(email: string, manager?: EntityManager): Promise<UpdateResult> {
+  async activateUser(
+    email: string,
+    manager?: EntityManager,
+  ): Promise<UpdateResult> {
     const repo = manager ? manager.getRepository(User) : this.userRepository;
-    return repo.update({ email, email_verified: false }, { email_verified: true });
+    return repo.update(
+      { email, email_verified: false },
+      { email_verified: true },
+    );
   }
 }

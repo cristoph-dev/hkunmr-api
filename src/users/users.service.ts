@@ -10,15 +10,24 @@ export class UsersService {
     private readonly userRepository: Repository<User>,
   ) { }
 
+  async findByEmail(email: string): Promise<User | null> {
+    return this.userRepository.findOne({
+      where: { email },
+    });
+  }
+
   async findByUsername(username: string): Promise<User | null> {
     return this.userRepository.findOne({
       where: { username },
     });
   }
 
-  async findByUsernameOrEmail(identifier: string): Promise<User | null> {
+  async findByUsernameOrEmail(username: string, email: string): Promise<User | null> {
     return this.userRepository.findOne({
-      where: [{ username: identifier }, { email: identifier }],
+      where: [
+        { username },
+        { email }
+      ],
     });
   }
 

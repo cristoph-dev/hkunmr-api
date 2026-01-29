@@ -61,10 +61,12 @@ export class AuthService {
     await queryRunner.startTransaction();
 
     try {
-      const existingUser = await this.usersService.findByUsernameOrEmail(username);
+      const existingUser = await this.usersService.findByUsernameOrEmail(username, email);
 
       if (existingUser) {
-        throw new BadRequestException('User already exists');
+        if (existingUser.username === username) throw new BadRequestException('El nombre de usuario ya está registrado');
+        if (existingUser.email === email) throw new BadRequestException('El correo electrónico ya está registrado');
+        throw new BadRequestException('El usuario o correo ya existe');
       }
 
       const hashedPassword = await bcrypt.hash(password, 10);

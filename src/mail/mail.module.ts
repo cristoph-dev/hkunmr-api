@@ -14,14 +14,14 @@ import { MailService } from './mail.service';
                 transport: {
                     host: configService.get('MAIL_HOST'),
                     port: configService.get('MAIL_PORT'),
-                    secure: false, // true for 465, false for other ports
+                    secure: configService.get('MAIL_PORT') === '465', // true for 465, false for other ports
                     auth: {
                         user: configService.get('MAIL_USER'),
                         pass: configService.get('MAIL_APP_PASSWORD'),
                     },
                 },
                 defaults: {
-                    from: `"No Reply" <${configService.get('MAIL_FROM')}>`,
+                    from: `"No reply" <${configService.get('MAIL_FROM')}>`,
                 },
                 template: {
                     dir: join(__dirname, 'templates'),

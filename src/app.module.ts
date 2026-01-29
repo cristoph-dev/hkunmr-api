@@ -3,13 +3,16 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/modules/auth.module';
+import { MailModule } from './mail/mail.module';
 
-@Module({ 
+@Module({
   imports: [
-    ConfigModule.forRoot({ // carga las variables de entorno, y con isglobal se carga en toda la app
-      isGlobal: true, 
+    ConfigModule.forRoot({
+      // carga las variables de entorno, y con isglobal se carga en toda la app
+      isGlobal: true,
     }),
-    TypeOrmModule.forRootAsync({ // Configuracion de typeorm
+    TypeOrmModule.forRootAsync({
+      // Configuracion de typeorm
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
@@ -20,11 +23,12 @@ import { AuthModule } from './auth/modules/auth.module';
         password: config.get('MYSQL_PASS'),
         database: config.get('MYSQL_DATABASE'),
         autoLoadEntities: true,
-        synchronize: false,
+        synchronize: config.get('ENV') === 'development',
       }),
     }),
     UsersModule,
     AuthModule,
+    MailModule,
   ],
 })
 export class AppModule {}

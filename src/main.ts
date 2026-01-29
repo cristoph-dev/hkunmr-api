@@ -1,15 +1,21 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import { configureSwagger } from './config';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   app.enableCors({
-    origin: true,        // 👈 Acepta cualquier origen (dev)
+    origin: true, // 👈 Acepta cualquier origen (dev)
     credentials: true,
   });
 
-  await app.listen(3000);
+  configureSwagger(app);
+
+  await app.listen(process.env.PORT || 3000);
 }
 
-bootstrap();
+bootstrap().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

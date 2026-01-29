@@ -33,6 +33,7 @@ export class OtpService {
    * Generates and stores a new OTP for the given email and type
    * Returns the plain OTP code to be sent via email
    */
+  // TODO: Update existing entity instead of creating a new one
   async generateOTP(email: string, type: OTPEnum): Promise<string> {
     const queryRunner =
       this.otpRepository.manager.connection.createQueryRunner();
@@ -146,6 +147,7 @@ export class OtpService {
 
       await this.invalidateOtp(email, type);
 
+      // TODO: Abstract this logic, since this only handles the verification of the OTP and we are missing more cases
       await this.usersService.activateUser(email, queryRunner.manager);
 
       await queryRunner.commitTransaction();

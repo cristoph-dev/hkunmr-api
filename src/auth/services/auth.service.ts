@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotImplementedException,
+} from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { UsersService } from '../../users/users.service';
 import { JwtService } from '@nestjs/jwt';
@@ -104,5 +108,15 @@ export class AuthService {
     } finally {
       await queryRunner.release();
     }
+  }
+
+  // TODO: Implement forgot password
+  async forgotPassword(email: string) {
+    throw new NotImplementedException();
+  }
+
+  // TODO: Implement reset password
+  async resetPassword(email: string, code: string, password: string) {
+    throw new NotImplementedException();
   }
 }

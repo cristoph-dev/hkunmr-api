@@ -3,6 +3,7 @@ import { PassportStrategy } from '@nestjs/passport';
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Request } from 'express';
+import { JwtPayload } from './jwt.strategy';
 
 @Injectable()
 export class JwtRefreshStrategy extends PassportStrategy(
@@ -23,10 +24,7 @@ export class JwtRefreshStrategy extends PassportStrategy(
     });
   }
 
-  validate(
-    req: Request,
-    payload: { sub: number; username: string; email: string },
-  ) {
+  validate(req: Request, payload: JwtPayload) {
     const refreshToken = (req.body as { refresh_token?: string }).refresh_token;
     if (!refreshToken) {
       throw new ForbiddenException('Refresh token missing');

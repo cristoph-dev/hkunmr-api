@@ -72,7 +72,7 @@ export class AuthController {
       properties: {
         username: { type: 'string', example: 'usuario' },
         password: { type: 'string', example: 'contrasenia123' },
-        email: { type: 'string', example: 'usuario@unimar.edu.ve' },
+        email: { type: 'string', example: 'usuario@test.com' },
       },
     },
   })

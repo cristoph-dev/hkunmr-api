@@ -13,6 +13,7 @@ import { UserPayload } from 'src/lib/types';
 import { User } from '../../users/entities/user.entity';
 import { LoginResponseDto } from '../dto/login-response.dto';
 import { ConfigService } from '@nestjs/config';
+import { EmailDomain } from 'src/lib/const';
 
 @Injectable()
 export class AuthService {
@@ -82,6 +83,14 @@ export class AuthService {
     return this.generateTokens(user);
   }
 
+  private validateEmail(email: string): void {
+    if (!email.endsWith('@' + EmailDomain)) {
+      throw new BadRequestException(
+        'El correo electrónico debe pertenecer al dominio @' + EmailDomain,
+      );
+    }
+  }
+
   async register(
     username: string,
     password: string,
@@ -92,6 +101,8 @@ export class AuthService {
     await queryRunner.startTransaction();
 
     try {
+      this.validateEmail(email);
+
       const existingUser = await this.usersService.findByUsernameOrEmail(
         username,
         email,
@@ -143,6 +154,8 @@ export class AuthService {
     await queryRunner.startTransaction();
 
     try {
+      this.validateEmail(email);
+
       const user = await this.usersService.findByEmail(email);
 
       if (!user) {
@@ -172,6 +185,8 @@ export class AuthService {
     await queryRunner.startTransaction();
 
     try {
+      this.validateEmail(email);
+
       const user = await this.usersService.findByEmail(email);
 
       if (!user) {
@@ -213,6 +228,7 @@ export class AuthService {
     await queryRunner.startTransaction();
 
     try {
+      this.validateEmail(email);
       const user = await this.usersService.findByEmail(email);
 
       if (!user) {

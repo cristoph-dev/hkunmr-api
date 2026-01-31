@@ -1,4 +1,10 @@
-import { IsEmail, IsNotEmpty, IsString, Length } from 'class-validator';
+import {
+  IsEmail,
+  IsNotEmpty,
+  IsString,
+  Length,
+  Matches,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class VerifyOtpDto {
@@ -7,6 +13,9 @@ export class VerifyOtpDto {
     description: 'Correo electrónico del usuario',
   })
   @IsEmail()
+  @Matches(/^[^\s@]+@unimar\.edu\.ve$/, {
+    message: 'El correo electrónico debe pertenecer al dominio @unimar.edu.ve',
+  })
   @IsNotEmpty()
   email: string;
 

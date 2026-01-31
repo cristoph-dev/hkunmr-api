@@ -4,3 +4,5 @@ export const ErrorMessages = {
   ErrExpired: 'err_expired',
   ErrInvalid: 'err_invalid',
 } as const;
+
+export const EmailDomain = 'unimar.edu.ve';

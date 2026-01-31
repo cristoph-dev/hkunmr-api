@@ -1,5 +1,4 @@
-import { IsEmail, IsEnum, IsNotEmpty, IsString, Length } from 'class-validator';
-import { OTPEnum } from '../types/otp-type.enum';
+import { IsEmail, IsNotEmpty, IsString, Length } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class VerifyOtpDto {
@@ -21,13 +20,4 @@ export class VerifyOtpDto {
   @IsNotEmpty()
   @Length(6, 6)
   code: string;
-
-  @ApiProperty({
-    enum: OTPEnum,
-    example: OTPEnum.VERIFICATION,
-    description: 'Tipo de OTP a verificar',
-  })
-  @IsEnum(OTPEnum)
-  @IsNotEmpty()
-  type: OTPEnum;
 }

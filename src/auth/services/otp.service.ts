@@ -6,13 +6,12 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThan, MoreThan } from 'typeorm';
+import { Repository, LessThan } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { Otp } from '../entities/otp.entity';
 import { OTPEnum } from '../types/otp-type.enum';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { MailService } from '../../mail/mail.service';
-import { UsersService } from '../../users/users.service';
 import * as crypto from 'crypto';
 import { ErrorMessages } from 'src/lib/const';
 
@@ -26,14 +25,12 @@ export class OtpService {
     @InjectRepository(Otp)
     private readonly otpRepository: Repository<Otp>,
     private readonly mailService: MailService,
-    private readonly usersService: UsersService,
   ) {}
 
   /**
    * Generates and stores a new OTP for the given email and type
    * Returns the plain OTP code to be sent via email
    */
-  // TODO: Update existing entity instead of creating a new one
   async generateOTP(email: string, type: OTPEnum): Promise<string> {
     const queryRunner =
       this.otpRepository.manager.connection.createQueryRunner();
@@ -41,52 +38,51 @@ export class OtpService {
     await queryRunner.startTransaction();
 
     try {
-      const rateLimitTime = new Date();
-      rateLimitTime.setMinutes(
-        rateLimitTime.getMinutes() - this.RATE_LIMIT_MINUTES,
+      const now = new Date();
+      const rateLimitTime = new Date(
+        now.getTime() - this.RATE_LIMIT_MINUTES * 60 * 1000,
       );
 
-      const recentOtps = await queryRunner.manager.count(Otp, {
-        where: {
-          email,
-          type,
-          created: MoreThan(rateLimitTime),
-        },
+      let otp = await queryRunner.manager.findOne(Otp, {
+        where: { email, type },
+        order: { created: 'DESC' },
       });
 
-      if (recentOtps >= this.MAX_OTP_ATTEMPTS) {
-        throw new HttpException(
-          ErrorMessages.ErrTooManyAttempts,
-          HttpStatus.TOO_MANY_REQUESTS,
-        );
-      }
+      if (otp) {
+        // Reset attempts if the last one was outside the rate limit window
+        if (otp.created < rateLimitTime) {
+          otp.attempts = 0;
+        }
 
-      await queryRunner.manager.update(
-        Otp,
-        {
+        if (otp.attempts >= this.MAX_OTP_ATTEMPTS) {
+          throw new HttpException(
+            ErrorMessages.ErrTooManyAttempts,
+            HttpStatus.TOO_MANY_REQUESTS,
+          );
+        }
+
+        otp.attempts += 1;
+      } else {
+        otp = queryRunner.manager.create(Otp, {
           email,
           type,
-          verified: false,
-        },
-        {
-          verified: true,
-        },
-      );
+          attempts: 1,
+        });
+      }
 
       const code = crypto.randomInt(100000, 1000000).toString();
       const hashedCode = await bcrypt.hash(code, 10);
 
-      const expires = new Date();
-      expires.setMinutes(expires.getMinutes() + this.OTP_EXPIRATION_MINUTES);
+      const expires = new Date(
+        now.getTime() + this.OTP_EXPIRATION_MINUTES * 60 * 1000,
+      );
 
-      const otp = queryRunner.manager.create(Otp, {
-        email,
-        code: hashedCode,
-        type,
-        expires,
-      });
+      otp.code = hashedCode;
+      otp.expires = expires;
+      otp.verified = false;
+      otp.created = now;
 
-      await queryRunner.manager.save(otp);
+      await queryRunner.manager.save(Otp, otp);
       await queryRunner.commitTransaction();
 
       return code;
@@ -147,9 +143,6 @@ export class OtpService {
 
       await this.invalidateOtp(email, type);
 
-      // TODO: Abstract this logic, since this only handles the verification of the OTP and we are missing more cases
-      await this.usersService.activateUser(email, queryRunner.manager);
-
       await queryRunner.commitTransaction();
 
       return true;
@@ -173,6 +166,7 @@ export class OtpService {
       },
       {
         verified: true,
+        attempts: 0,
       },
     );
   }

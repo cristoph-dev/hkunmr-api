@@ -30,6 +30,9 @@ export class Otp {
   @Column({ default: false })
   verified: boolean;
 
+  @Column({ default: 0 })
+  attempts: number;
+
   @CreateDateColumn()
   created: Date;
 

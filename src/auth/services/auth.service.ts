@@ -1,7 +1,7 @@
 import {
   BadRequestException,
   Injectable,
-  NotImplementedException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { UsersService } from '../../users/users.service';
@@ -10,6 +10,9 @@ import { OtpService } from './otp.service';
 import { OTPEnum } from '../types/otp-type.enum';
 import * as bcrypt from 'bcrypt';
 import { UserPayload } from 'src/lib/types';
+import { User } from '../../users/entities/user.entity';
+import { LoginResponseDto } from '../dto/login-response.dto';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class AuthService {
@@ -18,19 +21,46 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly otpService: OtpService,
     private readonly dataSource: DataSource,
+    private readonly configService: ConfigService,
   ) {}
+
+  private async generateTokens(
+    payload: UserPayload,
+  ): Promise<LoginResponseDto> {
+    const jwtPayload = {
+      sub: payload.id,
+      email: payload.email,
+      username: payload.username,
+    };
+
+    const [accessToken, refreshToken] = await Promise.all([
+      this.jwtService.signAsync(jwtPayload, {
+        expiresIn: '8d',
+        secret: this.configService.get<string>('JWT_SECRET_KEY'),
+      }),
+      this.jwtService.signAsync(jwtPayload, {
+        expiresIn: '7d',
+        secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
+      }),
+    ]);
+
+    return {
+      access_token: accessToken,
+      refresh_token: refreshToken,
+    };
+  }
 
   /**
    * Usado por LocalStrategy
    */
-  async validateUser(username: string, password: string) {
+  async validateUser(username: string, password: string): Promise<User | null> {
     const user = await this.usersService.findByUsername(username);
 
     if (!user) {
       return null;
     }
 
-    const passwordValid = await bcrypt.compare(password, user.password);
+    const passwordValid = await bcrypt.compare(password, user.password!);
 
     if (!passwordValid) {
       return null;
@@ -40,27 +70,23 @@ export class AuthService {
       throw new BadRequestException('Email not verified');
     }
 
-    // Nunca devolver password
-    const { password: _, ...result } = user;
-    return result;
+    delete user.password;
+
+    return user;
   }
 
   /**
    * Usado por AuthController después del guard
    */
-  login(user: UserPayload) {
-    const payload = {
-      sub: user.id,
-      email: user.email,
-      username: user.username,
-    };
-
-    return {
-      access_token: this.jwtService.sign(payload),
-    };
+  async login(user: UserPayload): Promise<LoginResponseDto> {
+    return this.generateTokens(user);
   }
 
-  async register(username: string, password: string, email: string) {
+  async register(
+    username: string,
+    password: string,
+    email: string,
+  ): Promise<User> {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -100,8 +126,9 @@ export class AuthService {
 
       await queryRunner.commitTransaction();
 
-      const { password: _, ...result } = user;
-      return result;
+      delete user.password;
+
+      return user;
     } catch (err) {
       await queryRunner.rollbackTransaction();
       throw err;
@@ -110,13 +137,125 @@ export class AuthService {
     }
   }
 
-  // TODO: Implement forgot password
-  async forgotPassword(email: string) {
-    throw new NotImplementedException();
+  async forgotPassword(email: string): Promise<boolean> {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const user = await this.usersService.findByEmail(email);
+
+      if (!user) {
+        throw new BadRequestException();
+      }
+
+      await this.otpService.sendOTP(email, OTPEnum.PASSWORD_CHANGE);
+
+      await queryRunner.commitTransaction();
+
+      return true;
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      throw err;
+    } finally {
+      await queryRunner.release();
+    }
   }
 
-  // TODO: Implement reset password
-  async resetPassword(email: string, code: string, password: string) {
-    throw new NotImplementedException();
+  async resetPassword(
+    email: string,
+    code: string,
+    password: string,
+  ): Promise<boolean> {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const user = await this.usersService.findByEmail(email);
+
+      if (!user) {
+        throw new BadRequestException();
+      }
+
+      const isValid = await this.otpService.verifyOTP(
+        email,
+        code,
+        OTPEnum.PASSWORD_CHANGE,
+      );
+
+      if (!isValid) {
+        throw new UnauthorizedException('Invalid code');
+      }
+
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      await this.usersService.updatePassword(
+        email,
+        hashedPassword,
+        queryRunner.manager,
+      );
+
+      await queryRunner.commitTransaction();
+
+      return true;
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      throw err;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  async verifyUser(email: string, code: string): Promise<boolean> {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const user = await this.usersService.findByEmail(email);
+
+      if (!user) {
+        throw new BadRequestException();
+      }
+
+      const isValid = await this.otpService.verifyOTP(
+        email,
+        code,
+        OTPEnum.VERIFICATION,
+      );
+
+      if (!isValid) {
+        throw new UnauthorizedException('Invalid code');
+      }
+
+      await this.usersService.activateUser(email, queryRunner.manager);
+
+      await queryRunner.commitTransaction();
+
+      return true;
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      throw err;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  async refreshToken(
+    userId: number,
+    _refreshToken: string,
+  ): Promise<LoginResponseDto> {
+    const user = await this.usersService.findById(userId);
+
+    if (!user) {
+      throw new UnauthorizedException();
+    }
+
+    return this.generateTokens({
+      id: user.id,
+      username: user.username,
+      email: user.email,
+    });
   }
 }

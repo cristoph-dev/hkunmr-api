@@ -11,8 +11,8 @@ export class User {
   @Column({ unique: true, length: 50 })
   username: string;
 
-  @Column()
-  password: string;
+  @Column({ type: 'varchar', nullable: false })
+  password: string | undefined;
 
   @Column({ default: true })
   is_active: boolean;

@@ -1,15 +1,16 @@
 import {
-  IsEmail,
   IsNotEmpty,
   IsString,
+  IsEmail,
   Length,
+  Matches,
   MinLength,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class RegisterDto {
   @ApiProperty({
-    example: 'usuario@unimar.edu.ve',
+    example: 'usuario',
     description: 'Nombre de usuario único',
     minLength: 3,
     maxLength: 50,
@@ -25,6 +26,9 @@ export class RegisterDto {
   })
   @IsEmail()
   @IsNotEmpty()
+  @Matches(/^[^\s@]+@unimar\.edu\.ve$/, {
+    message: 'El correo electrónico debe pertenecer al dominio @unimar.edu.ve',
+  })
   email: string;
 
   @ApiProperty({

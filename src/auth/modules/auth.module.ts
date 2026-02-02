@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
-import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ScheduleModule } from '@nestjs/schedule';
 
@@ -12,8 +11,9 @@ import { OtpController } from '../controllers/otp.controller';
 import { UsersModule } from '../../users/users.module';
 import { MailModule } from '../../mail/mail.module';
 
-import { LocalStrategy } from '../local.strategy';
-import { JwtStrategy } from '../jwt.strategy';
+import { LocalStrategy } from '../strategies/local.strategy';
+import { JwtStrategy } from '../strategies/jwt.strategy';
+import { JwtRefreshStrategy } from '../strategies/jwt-refresh.strategy';
 
 import { Otp } from '../entities/otp.entity';
 import { OtpService } from '../services/otp.service';
@@ -25,17 +25,16 @@ import { OtpService } from '../services/otp.service';
     PassportModule,
     ScheduleModule.forRoot(),
     TypeOrmModule.forFeature([Otp]),
-    JwtModule.registerAsync({
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        secret: configService.get<string>('JWT_SECRET_KEY'),
-        signOptions: { expiresIn: '8d' },
-      }),
-    }),
+    JwtModule.register({}),
   ],
   controllers: [AuthController, OtpController],
-  providers: [AuthService, OtpService, LocalStrategy, JwtStrategy],
+  providers: [
+    AuthService,
+    OtpService,
+    LocalStrategy,
+    JwtStrategy,
+    JwtRefreshStrategy,
+  ],
   exports: [JwtModule, OtpService],
 })
 export class AuthModule {}

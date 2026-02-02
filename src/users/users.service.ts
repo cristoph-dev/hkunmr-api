@@ -16,6 +16,12 @@ export class UsersService {
     });
   }
 
+  async findById(id: number): Promise<User | null> {
+    return this.userRepository.findOne({
+      where: { id },
+    });
+  }
+
   async findByUsername(username: string): Promise<User | null> {
     return this.userRepository.findOne({
       where: { username },
@@ -46,5 +52,14 @@ export class UsersService {
       { email, email_verified: false },
       { email_verified: true },
     );
+  }
+
+  async updatePassword(
+    email: string,
+    password: string,
+    manager?: EntityManager,
+  ): Promise<UpdateResult> {
+    const repo = manager ? manager.getRepository(User) : this.userRepository;
+    return repo.update({ email }, { password });
   }
 }

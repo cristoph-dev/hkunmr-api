@@ -20,12 +20,37 @@ export class OtpService {
   private readonly OTP_EXPIRATION_MINUTES = 10;
   private readonly MAX_OTP_ATTEMPTS = 3;
   private readonly RATE_LIMIT_MINUTES = 15;
+  private readonly COOLDOWN_SECONDS = 60;
 
   constructor(
     @InjectRepository(Otp)
     private readonly otpRepository: Repository<Otp>,
     private readonly mailService: MailService,
   ) {}
+
+  private checkCooldown(otp: Otp, now: Date) {
+    const rateLimitTime = new Date(
+      now.getTime() - this.RATE_LIMIT_MINUTES * 60 * 1000,
+    );
+
+    if (otp.created.getTime() < rateLimitTime.getTime()) {
+      otp.attempts = 0;
+    }
+
+    const cooldownTime = new Date(
+      otp.created.getTime() + this.COOLDOWN_SECONDS * 1000,
+    );
+
+    if (now.getTime() < cooldownTime.getTime()) {
+      const secondsRemaining = Math.ceil(
+        (cooldownTime.getTime() - now.getTime()) / 1000,
+      );
+      throw new HttpException(
+        `Por favor, espera ${secondsRemaining} segundos antes de solicitar otro código`,
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+  }
 
   /**
    * Generates and stores a new OTP for the given email and type
@@ -39,20 +64,13 @@ export class OtpService {
 
     try {
       const now = new Date();
-      const rateLimitTime = new Date(
-        now.getTime() - this.RATE_LIMIT_MINUTES * 60 * 1000,
-      );
-
       let otp = await queryRunner.manager.findOne(Otp, {
         where: { email, type },
         order: { created: 'DESC' },
       });
 
       if (otp) {
-        // Reset attempts if the last one was outside the rate limit window
-        if (otp.created < rateLimitTime) {
-          otp.attempts = 0;
-        }
+        this.checkCooldown(otp, now);
 
         if (otp.attempts >= this.MAX_OTP_ATTEMPTS) {
           throw new HttpException(
@@ -110,34 +128,6 @@ export class OtpService {
   }
 
   /**
-   * Verifies an OTP code for the given email and type
-   * legacy method, use verifyOTPByUuid instead
-   * @deprecated
-   */
-  async verifyOTP(
-    email: string,
-    code: string,
-    type: OTPEnum,
-  ): Promise<boolean> {
-    const otp = await this.otpRepository.findOne({
-      where: {
-        email,
-        type,
-        verified: false,
-      },
-      order: {
-        created: 'DESC',
-      },
-    });
-
-    if (!otp) {
-      throw new BadRequestException('Invalid code');
-    }
-
-    return this.verifyOtpRecord(otp, code);
-  }
-
-  /**
    * Verifies an OTP code using its UUID
    */
   async verifyOTPByUuid(
@@ -157,16 +147,25 @@ export class OtpService {
       throw new BadRequestException('Invalid code or expired session');
     }
 
-    return this.verifyOtpRecord(otp, code);
+    return this.verifyOtpRecord(otp.id, code);
   }
 
-  private async verifyOtpRecord(otp: Otp, code: string): Promise<boolean> {
+  private async verifyOtpRecord(otpId: number, code: string): Promise<boolean> {
     const queryRunner =
       this.otpRepository.manager.connection.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
     try {
+      const otp = await queryRunner.manager.findOne(Otp, {
+        where: { id: otpId },
+        lock: { mode: 'pessimistic_write' },
+      });
+
+      if (!otp || otp.verified) {
+        throw new BadRequestException('Invalid code or expired session');
+      }
+
       if (new Date() > otp.expires) {
         throw new UnauthorizedException(ErrorMessages.ErrExpired);
       }

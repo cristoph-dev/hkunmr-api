@@ -1,6 +1,15 @@
-import { PickType } from '@nestjs/swagger';
-import { VerifyOtpDto } from './verify-otp.dto';
+import { IsEmail, IsNotEmpty, Matches } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
 
-export class ForgotPasswordDto extends PickType(VerifyOtpDto, [
-  'email',
-] as const) {}
+export class ForgotPasswordDto {
+  @ApiProperty({
+    example: 'usuario@example.com',
+    description: 'Correo electrónico del usuario',
+  })
+  @IsEmail()
+  @Matches(/^[^\s@]+@unimar\.edu\.ve$/, {
+    message: 'El correo electrónico debe pertenecer al dominio @unimar.edu.ve',
+  })
+  @IsNotEmpty()
+  email: string;
+}

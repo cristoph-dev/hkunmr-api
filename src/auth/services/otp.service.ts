@@ -6,7 +6,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThan } from 'typeorm';
+import { Repository, LessThan, EntityManager } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { Otp } from '../entities/otp.entity';
 import { OTPEnum } from '../types/otp-type.enum';
@@ -20,6 +20,7 @@ export class OtpService {
   private readonly OTP_EXPIRATION_MINUTES = 10;
   private readonly MAX_OTP_ATTEMPTS = 3;
   private readonly RATE_LIMIT_MINUTES = 15;
+  private readonly COOLDOWN_SECONDS = 60;
 
   constructor(
     @InjectRepository(Otp)
@@ -27,11 +28,35 @@ export class OtpService {
     private readonly mailService: MailService,
   ) {}
 
+  private checkCooldown(otp: Otp, now: Date) {
+    const rateLimitTime = new Date(
+      now.getTime() - this.RATE_LIMIT_MINUTES * 60 * 1000,
+    );
+
+    if (otp.created.getTime() < rateLimitTime.getTime()) {
+      otp.attempts = 0;
+    }
+
+    const cooldownTime = new Date(
+      otp.created.getTime() + this.COOLDOWN_SECONDS * 1000,
+    );
+
+    if (now.getTime() < cooldownTime.getTime()) {
+      const secondsRemaining = Math.ceil(
+        (cooldownTime.getTime() - now.getTime()) / 1000,
+      );
+      throw new HttpException(
+        `Por favor, espera ${secondsRemaining} segundos antes de solicitar otro código`,
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+  }
+
   /**
    * Generates and stores a new OTP for the given email and type
-   * Returns the plain OTP code to be sent via email
+   * Returns the OTP object
    */
-  async generateOTP(email: string, type: OTPEnum): Promise<string> {
+  async generateOTP(email: string, type: OTPEnum): Promise<Otp> {
     const queryRunner =
       this.otpRepository.manager.connection.createQueryRunner();
     await queryRunner.connect();
@@ -39,20 +64,13 @@ export class OtpService {
 
     try {
       const now = new Date();
-      const rateLimitTime = new Date(
-        now.getTime() - this.RATE_LIMIT_MINUTES * 60 * 1000,
-      );
-
       let otp = await queryRunner.manager.findOne(Otp, {
         where: { email, type },
         order: { created: 'DESC' },
       });
 
       if (otp) {
-        // Reset attempts if the last one was outside the rate limit window
-        if (otp.created < rateLimitTime) {
-          otp.attempts = 0;
-        }
+        this.checkCooldown(otp, now);
 
         if (otp.attempts >= this.MAX_OTP_ATTEMPTS) {
           throw new HttpException(
@@ -62,6 +80,9 @@ export class OtpService {
         }
 
         otp.attempts += 1;
+
+        // Regenerate UUID to invalidate previous registration sessions for this email
+        otp.uuid = crypto.randomUUID();
       } else {
         otp = queryRunner.manager.create(Otp, {
           email,
@@ -82,10 +103,12 @@ export class OtpService {
       otp.verified = false;
       otp.created = now;
 
-      await queryRunner.manager.save(Otp, otp);
+      const savedOtp = await queryRunner.manager.save(Otp, otp);
       await queryRunner.commitTransaction();
 
-      return code;
+      savedOtp.plainCode = code;
+
+      return savedOtp;
     } catch (err) {
       await queryRunner.rollbackTransaction();
       throw err;
@@ -96,20 +119,38 @@ export class OtpService {
 
   /**
    * Generates OTP and sends it via email
+   * Returns the OTP UUID
    */
-  async sendOTP(email: string, type: OTPEnum): Promise<void> {
-    const code = await this.generateOTP(email, type);
-    await this.mailService.sendOtpEmail(email, code, type);
+  async sendOTP(email: string, type: OTPEnum): Promise<string> {
+    const otp = await this.generateOTP(email, type);
+    await this.mailService.sendOtpEmail(email, otp.plainCode!, type);
+    return otp.uuid;
   }
 
   /**
-   * Verifies an OTP code for the given email and type
+   * Verifies an OTP code using its UUID
    */
-  async verifyOTP(
-    email: string,
+  async verifyOTPByUuid(
+    uuid: string,
     code: string,
     type: OTPEnum,
   ): Promise<boolean> {
+    const otp = await this.otpRepository.findOne({
+      where: {
+        uuid,
+        type,
+        verified: false,
+      },
+    });
+
+    if (!otp) {
+      throw new BadRequestException('Invalid code or expired session');
+    }
+
+    return this.verifyOtpRecord(otp.id, code);
+  }
+
+  private async verifyOtpRecord(otpId: number, code: string): Promise<boolean> {
     const queryRunner =
       this.otpRepository.manager.connection.createQueryRunner();
     await queryRunner.connect();
@@ -117,18 +158,12 @@ export class OtpService {
 
     try {
       const otp = await queryRunner.manager.findOne(Otp, {
-        where: {
-          email,
-          type,
-          verified: false,
-        },
-        order: {
-          created: 'DESC',
-        },
+        where: { id: otpId },
+        lock: { mode: 'pessimistic_write' },
       });
 
-      if (!otp) {
-        throw new BadRequestException('Invalid code');
+      if (!otp || otp.verified) {
+        throw new BadRequestException('Invalid code or expired session');
       }
 
       if (new Date() > otp.expires) {
@@ -138,16 +173,25 @@ export class OtpService {
       const isValid = await bcrypt.compare(code, otp.code);
 
       if (!isValid) {
+        // Track failed attempts even on unsuccessful verification
+        otp.attempts += 1;
+        if (otp.attempts >= this.MAX_OTP_ATTEMPTS) {
+          otp.verified = true;
+        }
+        await queryRunner.manager.save(Otp, otp);
+        await queryRunner.commitTransaction();
         throw new UnauthorizedException(ErrorMessages.ErrInvalid);
       }
 
-      await this.invalidateOtp(email, type);
+      await this.invalidateOtp(otp.uuid, queryRunner.manager);
 
       await queryRunner.commitTransaction();
 
       return true;
     } catch (err) {
-      await queryRunner.rollbackTransaction();
+      if (queryRunner.isTransactionActive) {
+        await queryRunner.rollbackTransaction();
+      }
       throw err;
     } finally {
       await queryRunner.release();
@@ -155,13 +199,13 @@ export class OtpService {
   }
 
   /**
-   * Marks an OTP as verified (used) for the given email and type
+   * Marks an OTP as verified (used) by its UUID
    */
-  async invalidateOtp(email: string, type: OTPEnum): Promise<void> {
-    await this.otpRepository.update(
+  async invalidateOtp(uuid: string, manager?: EntityManager): Promise<void> {
+    const repo = manager ? manager.getRepository(Otp) : this.otpRepository;
+    await repo.update(
       {
-        email,
-        type,
+        uuid,
         verified: false,
       },
       {

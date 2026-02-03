@@ -14,6 +14,10 @@ import { User } from '../../users/entities/user.entity';
 import { LoginResponseDto } from '../dto/login-response.dto';
 import { ConfigService } from '@nestjs/config';
 import { EmailDomain } from 'src/lib/const';
+import {
+  RegistrationPayload,
+  ResetPayload,
+} from '../types/registration-payload.interface';
 
 @Injectable()
 export class AuthService {
@@ -49,6 +53,22 @@ export class AuthService {
       access_token: accessToken,
       refresh_token: refreshToken,
     };
+  }
+
+  private async generateRegistrationToken(
+    payload: RegistrationPayload,
+  ): Promise<string> {
+    return this.jwtService.signAsync(payload, {
+      expiresIn: '5m',
+      secret: this.configService.get<string>('JWT_REGISTER_SECRET'),
+    });
+  }
+
+  private async generateResetToken(payload: ResetPayload): Promise<string> {
+    return this.jwtService.signAsync(payload, {
+      expiresIn: '5m',
+      secret: this.configService.get<string>('JWT_REGISTER_SECRET'),
+    });
   }
 
   /**
@@ -95,60 +115,43 @@ export class AuthService {
     username: string,
     password: string,
     email: string,
-  ): Promise<User> {
-    const queryRunner = this.dataSource.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
+  ): Promise<{ registrationToken: string; expires: string }> {
+    this.validateEmail(email);
 
-    try {
-      this.validateEmail(email);
+    const existingUser = await this.usersService.findByUsernameOrEmail(
+      username,
+      email,
+    );
 
-      const existingUser = await this.usersService.findByUsernameOrEmail(
-        username,
-        email,
-      );
-
-      if (existingUser) {
-        if (existingUser.username === username)
-          throw new BadRequestException(
-            'El nombre de usuario ya está registrado',
-          );
-        if (existingUser.email === email)
-          throw new BadRequestException(
-            'El correo electrónico ya está registrado',
-          );
-        throw new BadRequestException('El usuario o correo ya existe');
-      }
-
-      const hashedPassword = await bcrypt.hash(password, 10);
-
-      const user = await this.usersService.create(
-        {
-          username,
-          email,
-          password: hashedPassword,
-          is_active: true,
-          email_verified: false,
-        },
-        queryRunner.manager,
-      );
-
-      await this.otpService.sendOTP(email, OTPEnum.VERIFICATION);
-
-      await queryRunner.commitTransaction();
-
-      delete user.password;
-
-      return user;
-    } catch (err) {
-      await queryRunner.rollbackTransaction();
-      throw err;
-    } finally {
-      await queryRunner.release();
+    if (existingUser) {
+      if (existingUser.username === username)
+        throw new BadRequestException(
+          'El nombre de usuario ya está registrado',
+        );
+      if (existingUser.email === email)
+        throw new BadRequestException(
+          'El correo electrónico ya está registrado',
+        );
+      throw new BadRequestException('El usuario o correo ya existe');
     }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const otpUuid = await this.otpService.sendOTP(email, OTPEnum.VERIFICATION);
+
+    const registrationToken = await this.generateRegistrationToken({
+      username,
+      email,
+      password: hashedPassword,
+      otpUuid,
+    });
+
+    return { registrationToken, expires: '5m' };
   }
 
-  async forgotPassword(email: string): Promise<boolean> {
+  async forgotPassword(
+    email: string,
+  ): Promise<{ resetToken: string; expires: string }> {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -162,11 +165,19 @@ export class AuthService {
         throw new BadRequestException();
       }
 
-      await this.otpService.sendOTP(email, OTPEnum.PASSWORD_CHANGE);
+      const otpUuid = await this.otpService.sendOTP(
+        email,
+        OTPEnum.PASSWORD_CHANGE,
+      );
+
+      const resetToken = await this.generateResetToken({
+        email,
+        otpUuid,
+      });
 
       await queryRunner.commitTransaction();
 
-      return true;
+      return { resetToken, expires: '5m' };
     } catch (err) {
       await queryRunner.rollbackTransaction();
       throw err;
@@ -176,7 +187,7 @@ export class AuthService {
   }
 
   async resetPassword(
-    email: string,
+    resetToken: string,
     code: string,
     password: string,
   ): Promise<boolean> {
@@ -185,16 +196,24 @@ export class AuthService {
     await queryRunner.startTransaction();
 
     try {
-      this.validateEmail(email);
+      let payload: ResetPayload;
+      try {
+        payload = await this.jwtService.verifyAsync(resetToken, {
+          secret: this.configService.get<string>('JWT_REGISTER_SECRET'),
+        });
+      } catch (e) {
+        console.error(e);
+        throw new BadRequestException('Invalid or expired reset token');
+      }
 
-      const user = await this.usersService.findByEmail(email);
+      const user = await this.usersService.findByEmail(payload.email);
 
       if (!user) {
         throw new BadRequestException();
       }
 
-      const isValid = await this.otpService.verifyOTP(
-        email,
+      const isValid = await this.otpService.verifyOTPByUuid(
+        payload.otpUuid,
         code,
         OTPEnum.PASSWORD_CHANGE,
       );
@@ -206,7 +225,7 @@ export class AuthService {
       const hashedPassword = await bcrypt.hash(password, 10);
 
       await this.usersService.updatePassword(
-        email,
+        payload.email,
         hashedPassword,
         queryRunner.manager,
       );
@@ -222,21 +241,24 @@ export class AuthService {
     }
   }
 
-  async verifyUser(email: string, code: string): Promise<boolean> {
+  async verifyUser(code: string, registrationToken: string): Promise<boolean> {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
     try {
-      this.validateEmail(email);
-      const user = await this.usersService.findByEmail(email);
-
-      if (!user) {
-        throw new BadRequestException();
+      let payload: RegistrationPayload;
+      try {
+        payload = await this.jwtService.verifyAsync(registrationToken, {
+          secret: this.configService.get<string>('JWT_REGISTER_SECRET'),
+        });
+      } catch (e) {
+        console.error(e);
+        throw new BadRequestException('Invalid or expired registration token');
       }
 
-      const isValid = await this.otpService.verifyOTP(
-        email,
+      const isValid = await this.otpService.verifyOTPByUuid(
+        payload.otpUuid,
         code,
         OTPEnum.VERIFICATION,
       );
@@ -245,7 +267,25 @@ export class AuthService {
         throw new UnauthorizedException('Invalid code');
       }
 
-      await this.usersService.activateUser(email, queryRunner.manager);
+      const existingUser = await this.usersService.findByUsernameOrEmail(
+        payload.username,
+        payload.email,
+      );
+
+      if (existingUser) {
+        throw new BadRequestException('User already exists');
+      }
+
+      await this.usersService.create(
+        {
+          username: payload.username,
+          email: payload.email,
+          password: payload.password,
+          is_active: true,
+          email_verified: true,
+        },
+        queryRunner.manager,
+      );
 
       await queryRunner.commitTransaction();
 

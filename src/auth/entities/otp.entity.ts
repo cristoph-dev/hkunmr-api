@@ -4,6 +4,8 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  Generated,
+  Index,
 } from 'typeorm';
 import { OTPEnum } from '../types/otp-type.enum';
 
@@ -11,6 +13,11 @@ import { OTPEnum } from '../types/otp-type.enum';
 export class Otp {
   @PrimaryGeneratedColumn()
   id: number;
+
+  @Index({ unique: true })
+  @Column()
+  @Generated('uuid')
+  uuid: string;
 
   @Column()
   email: string;
@@ -38,4 +45,6 @@ export class Otp {
 
   @UpdateDateColumn()
   updated: Date;
+
+  plainCode?: string;
 }

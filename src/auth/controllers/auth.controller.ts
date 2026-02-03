@@ -20,7 +20,6 @@ import {
   RefreshTokenDto,
 } from '../dto';
 import type { AuthenticatedRequest } from 'src/lib/types';
-import { User } from 'src/users/entities/user.entity';
 import { SuccessResponseDto } from '@common/dto';
 import { JwtRefreshGuard } from '../guards/jwt-refresh.guard';
 
@@ -76,12 +75,17 @@ export class AuthController {
       },
     },
   })
-  @ApiResponse({ status: 201, type: User })
+  @ApiResponse({
+    status: 201,
+    schema: { properties: { registrationToken: { type: 'string' } } },
+  })
   @ApiResponse({
     status: 400,
     description: 'Datos inválidos o usuario ya existe',
   })
-  async register(@Body() registerDto: RegisterDto): Promise<User> {
+  async register(
+    @Body() registerDto: RegisterDto,
+  ): Promise<{ registrationToken: string }> {
     const { username, password, email } = registerDto;
     return this.authService.register(username, password, email);
   }
@@ -100,8 +104,8 @@ export class AuthController {
     @Body() verifyOtpDto: VerifyOtpDto,
   ): Promise<SuccessResponseDto> {
     const isValid = await this.authService.verifyUser(
-      verifyOtpDto.email,
       verifyOtpDto.code,
+      verifyOtpDto.registrationToken,
     );
 
     return {
@@ -122,14 +126,15 @@ export class AuthController {
   @ApiResponse({ status: 404, description: 'Código no válido' })
   async forgotPassword(
     @Body() forgotPasswordDto: ForgotPasswordDto,
-  ): Promise<SuccessResponseDto> {
-    const isValid = await this.authService.forgotPassword(
+  ): Promise<SuccessResponseDto & { resetToken?: string; expires?: string }> {
+    const result = await this.authService.forgotPassword(
       forgotPasswordDto.email,
     );
 
     return {
       message: 'Ok',
-      success: isValid,
+      success: !!result,
+      ...result,
     };
   }
 
@@ -147,7 +152,7 @@ export class AuthController {
     @Body() resetPasswordDto: ResetPasswordDto,
   ): Promise<SuccessResponseDto> {
     const isValid = await this.authService.resetPassword(
-      resetPasswordDto.email,
+      resetPasswordDto.resetToken,
       resetPasswordDto.code,
       resetPasswordDto.password,
     );

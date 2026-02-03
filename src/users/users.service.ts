@@ -22,21 +22,6 @@ export class UsersService {
     });
   }
 
-  async findByUsername(username: string): Promise<User | null> {
-    return this.userRepository.findOne({
-      where: { username },
-    });
-  }
-
-  async findByUsernameOrEmail(
-    username: string,
-    email: string,
-  ): Promise<User | null> {
-    return this.userRepository.findOne({
-      where: [{ username }, { email }],
-    });
-  }
-
   async create(data: Partial<User>, manager?: EntityManager): Promise<User> {
     const repo = manager ? manager.getRepository(User) : this.userRepository;
     const user = repo.create(data);

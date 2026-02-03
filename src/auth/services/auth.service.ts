@@ -35,7 +35,6 @@ export class AuthService {
     const jwtPayload = {
       sub: payload.id,
       email: payload.email,
-      username: payload.username,
     };
 
     const [accessToken, refreshToken] = await Promise.all([
@@ -74,25 +73,19 @@ export class AuthService {
   /**
    * Usado por LocalStrategy
    */
-  async validateUser(username: string, password: string): Promise<User | null> {
-    const user = await this.usersService.findByUsername(username);
-
+  async validateUser(email: string, password: string): Promise<User | null> {
+    const user = await this.usersService.findByEmail(email);
     if (!user) {
       return null;
     }
-
     const passwordValid = await bcrypt.compare(password, user.password!);
-
     if (!passwordValid) {
       return null;
     }
-
     if (user.is_active === false || user.email_verified === false) {
       throw new BadRequestException('Email not verified');
     }
-
     delete user.password;
-
     return user;
   }
 
@@ -112,42 +105,39 @@ export class AuthService {
   }
 
   async register(
-    username: string,
-    password: string,
-    email: string,
-  ): Promise<{ registrationToken: string; expires: string }> {
-    this.validateEmail(email);
+  name: string,
+  lastname: string,
+  email: string,
+  password: string,
+): Promise<{ registrationToken: string; expires: string }> {
+  this.validateEmail(email);
 
-    const existingUser = await this.usersService.findByUsernameOrEmail(
-      username,
-      email,
+  const existingUser = await this.usersService.findByEmail(email);
+
+  if (existingUser) {
+    throw new BadRequestException(
+      'El correo electrónico ya está registrado',
     );
-
-    if (existingUser) {
-      if (existingUser.username === username)
-        throw new BadRequestException(
-          'El nombre de usuario ya está registrado',
-        );
-      if (existingUser.email === email)
-        throw new BadRequestException(
-          'El correo electrónico ya está registrado',
-        );
-      throw new BadRequestException('El usuario o correo ya existe');
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const otpUuid = await this.otpService.sendOTP(email, OTPEnum.VERIFICATION);
-
-    const registrationToken = await this.generateRegistrationToken({
-      username,
-      email,
-      password: hashedPassword,
-      otpUuid,
-    });
-
-    return { registrationToken, expires: '5m' };
   }
+
+  const hashedPassword = await bcrypt.hash(password, 10);
+
+  const otpUuid = await this.otpService.sendOTP(
+    email,
+    OTPEnum.VERIFICATION,
+  );
+
+  const registrationToken = await this.generateRegistrationToken({
+    name,
+    lastname,
+    email,
+    password: hashedPassword,
+    otpUuid,
+  });
+
+  return { registrationToken, expires: '5m' };
+}
+
 
   async forgotPassword(
     email: string,
@@ -267,8 +257,7 @@ export class AuthService {
         throw new UnauthorizedException('Invalid code');
       }
 
-      const existingUser = await this.usersService.findByUsernameOrEmail(
-        payload.username,
+      const existingUser = await this.usersService.findByEmail(
         payload.email,
       );
 
@@ -278,7 +267,6 @@ export class AuthService {
 
       await this.usersService.create(
         {
-          username: payload.username,
           email: payload.email,
           password: payload.password,
           is_active: true,
@@ -310,7 +298,6 @@ export class AuthService {
 
     return this.generateTokens({
       id: user.id,
-      username: user.username,
       email: user.email,
     });
   }

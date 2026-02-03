@@ -232,57 +232,50 @@ export class AuthService {
   }
 
   async verifyUser(code: string, registrationToken: string): Promise<boolean> {
-    const queryRunner = this.dataSource.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
+    const queryRunner = this.dataSource.createQueryRunner()
+    await queryRunner.connect()
+    await queryRunner.startTransaction()
 
     try {
-      let payload: RegistrationPayload;
-      try {
-        payload = await this.jwtService.verifyAsync(registrationToken, {
-          secret: this.configService.get<string>('JWT_REGISTER_SECRET'),
-        });
-      } catch (e) {
-        console.error(e);
-        throw new BadRequestException('Invalid or expired registration token');
-      }
+      const payload = await this.jwtService.verifyAsync(registrationToken, {
+        secret: this.configService.get<string>('JWT_REGISTER_SECRET'),
+      })
 
       const isValid = await this.otpService.verifyOTPByUuid(
         payload.otpUuid,
         code,
         OTPEnum.VERIFICATION,
-      );
+      )
 
       if (!isValid) {
-        throw new UnauthorizedException('Invalid code');
+        throw new UnauthorizedException('Invalid code')
       }
 
-      const existingUser = await this.usersService.findByEmail(
-        payload.email,
-      );
-
+      const existingUser = await this.usersService.findByEmail(payload.email)
       if (existingUser) {
-        throw new BadRequestException('User already exists');
+        throw new BadRequestException('User already exists')
       }
 
       await this.usersService.create(
         {
+          name: payload.name,
+          lastname: payload.lastname,
           email: payload.email,
           password: payload.password,
           is_active: true,
           email_verified: true,
         },
         queryRunner.manager,
-      );
+      )
 
-      await queryRunner.commitTransaction();
+      await queryRunner.commitTransaction()
+      return true
 
-      return true;
     } catch (err) {
-      await queryRunner.rollbackTransaction();
-      throw err;
+      await queryRunner.rollbackTransaction()
+      throw err
     } finally {
-      await queryRunner.release();
+      await queryRunner.release()
     }
   }
 

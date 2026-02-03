@@ -64,17 +64,6 @@ export class AuthController {
 
   @Post('register')
   @ApiOperation({ summary: 'Registrar un nuevo usuario' })
-  @ApiBody({
-    description: 'Datos de registro',
-    schema: {
-      type: 'object',
-      properties: {
-        username: { type: 'string', example: 'usuario' },
-        password: { type: 'string', example: 'contrasenia123' },
-        email: { type: 'string', example: 'usuario@test.com' },
-      },
-    },
-  })
   @ApiResponse({
     status: 201,
     schema: { properties: { registrationToken: { type: 'string' } } },

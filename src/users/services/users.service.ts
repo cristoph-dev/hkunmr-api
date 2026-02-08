@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, EntityManager, UpdateResult } from 'typeorm';
-import { User } from './entities/user.entity';
+import { User } from 'src/users/entities';
 
 @Injectable()
 export class UsersService {
@@ -46,5 +46,23 @@ export class UsersService {
   ): Promise<UpdateResult> {
     const repo = manager ? manager.getRepository(User) : this.userRepository;
     return repo.update({ email }, { password });
+  }
+
+  async findByRole(roleId: number, manager?: EntityManager): Promise<User[]> {
+    const repository = manager
+      ? manager.getRepository(User)
+      : this.userRepository;
+    return repository.find({ where: { role: { id: roleId } } });
+  }
+
+  async updateRole(
+    userId: number,
+    roleId: number,
+    manager?: EntityManager,
+  ): Promise<UpdateResult> {
+    const repository = manager
+      ? manager.getRepository(User)
+      : this.userRepository;
+    return repository.update({ id: userId }, { role: { id: roleId } });
   }
 }

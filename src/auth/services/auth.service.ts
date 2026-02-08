@@ -4,13 +4,13 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { DataSource } from 'typeorm';
-import { UsersService } from '../../users/users.service';
+import { UsersService } from 'src/users/services/users.service';
 import { JwtService } from '@nestjs/jwt';
 import { OtpService } from './otp.service';
 import { OTPEnum } from '../types/otp-type.enum';
 import * as bcrypt from 'bcrypt';
 import { UserPayload } from 'src/lib/types';
-import { User } from '../../users/entities/user.entity';
+import { User } from 'src/users/entities';
 import { LoginResponseDto } from '../dto/login-response.dto';
 import { ConfigService } from '@nestjs/config';
 import { EmailDomain } from 'src/lib/const';

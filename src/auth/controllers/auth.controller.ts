@@ -73,17 +73,12 @@ export class AuthController {
     description: 'Datos inválidos o usuario ya existe',
   })
   async register(
-  @Body() registerDto: RegisterDto,
-): Promise<{ registrationToken: string; expires: string }> {
-  const { name, lastname, email, password } = registerDto;
+    @Body() registerDto: RegisterDto,
+  ): Promise<{ registrationToken: string; expires: string }> {
+    const { name, lastname, email, password } = registerDto;
 
-  return this.authService.register(
-    name,
-    lastname,
-    email,
-    password,
-  );
-}
+    return this.authService.register(name, lastname, email, password);
+  }
 
   @Post('verify')
   @HttpCode(HttpStatus.OK)

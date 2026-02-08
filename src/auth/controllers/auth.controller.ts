@@ -64,17 +64,6 @@ export class AuthController {
 
   @Post('register')
   @ApiOperation({ summary: 'Registrar un nuevo usuario' })
-  @ApiBody({
-    description: 'Datos de registro',
-    schema: {
-      type: 'object',
-      properties: {
-        username: { type: 'string', example: 'usuario' },
-        password: { type: 'string', example: 'contrasenia123' },
-        email: { type: 'string', example: 'usuario@test.com' },
-      },
-    },
-  })
   @ApiResponse({
     status: 201,
     schema: { properties: { registrationToken: { type: 'string' } } },
@@ -85,9 +74,10 @@ export class AuthController {
   })
   async register(
     @Body() registerDto: RegisterDto,
-  ): Promise<{ registrationToken: string }> {
-    const { username, password, email } = registerDto;
-    return this.authService.register(username, password, email);
+  ): Promise<{ registrationToken: string; expires: string }> {
+    const { name, lastname, email, password } = registerDto;
+
+    return this.authService.register(name, lastname, email, password);
   }
 
   @Post('verify')

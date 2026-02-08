@@ -1,5 +1,6 @@
 export interface RegistrationPayload {
-  username: string;
+  name: string;
+  lastname: string;
   email: string;
   password: string; // Hashed password
   otpUuid: string;

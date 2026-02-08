@@ -5,11 +5,14 @@ export class User {
   @PrimaryGeneratedColumn()
   id: number;
 
+  @Column({ length: 50 })
+  name: string;
+
+  @Column({ length: 50 })
+  lastname: string;
+
   @Column({ unique: true })
   email: string;
-
-  @Column({ unique: true, length: 50 })
-  username: string;
 
   @Column({ type: 'varchar', nullable: false })
   password: string | undefined;

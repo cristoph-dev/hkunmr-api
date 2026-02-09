@@ -9,11 +9,11 @@ import { JwtService } from '@nestjs/jwt';
 import { OtpService } from './otp.service';
 import { OTPEnum } from '../types/otp-type.enum';
 import * as bcrypt from 'bcrypt';
-import { UserPayload } from 'src/lib/types';
+import { UserPayload } from 'src/common/lib/types';
 import { User } from 'src/users/entities';
 import { LoginResponseDto } from '../dto/login-response.dto';
 import { ConfigService } from '@nestjs/config';
-import { EmailDomain } from 'src/lib/const';
+import { EmailDomain } from 'src/common/lib/const';
 import {
   RegistrationPayload,
   ResetPayload,

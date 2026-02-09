@@ -5,7 +5,6 @@ import {
   OneToMany,
   CreateDateColumn,
   UpdateDateColumn,
-  Index,
 } from 'typeorm';
 import { User } from './user.entity';
 
@@ -20,7 +19,6 @@ export class Role {
   @Column({ default: true })
   is_active: boolean;
 
-  @Index()
   @OneToMany(() => User, (user) => user.role)
   users: User[];
 

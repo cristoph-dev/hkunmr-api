@@ -13,7 +13,7 @@ import { OTPEnum } from '../types/otp-type.enum';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { MailService } from '../../mail/mail.service';
 import * as crypto from 'crypto';
-import { ErrorMessages } from 'src/lib/const';
+import { ErrorMessages } from 'src/common/lib/const';
 
 @Injectable()
 export class OtpService {

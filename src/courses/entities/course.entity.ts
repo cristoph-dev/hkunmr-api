@@ -25,6 +25,9 @@ export class Course {
   @OneToMany(() => Lesson, (lesson) => lesson.course)
   lessons: Lesson[];
 
+  @Column()
+  position: number;
+
   @ManyToMany(() => Classroom, (classroom) => classroom.courses)
   classrooms: Classroom[];
 

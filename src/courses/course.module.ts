@@ -5,6 +5,7 @@ import { LessonStep } from './entities/lesson-step.entity';
 import { Lesson } from './entities/lesson.entity';
 import { Course } from './entities/course.entity';
 import { UserCourse } from './entities/course-user.entity';
+import { UserLesson } from './entities/lesson-user.entity';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { UserCourse } from './entities/course-user.entity';
       Lesson,
       Course,
       UserCourse,
+      UserLesson,
     ]),
   ],
 })

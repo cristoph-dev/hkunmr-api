@@ -10,6 +10,7 @@ import {
   OneToMany,
 } from 'typeorm';
 import { LessonStep } from './lesson-step.entity';
+import { UserLesson } from './lesson-user.entity';
 
 @Entity('lessons')
 @Unique(['course', 'order'])
@@ -28,6 +29,9 @@ export class Lesson {
 
   @OneToMany(() => LessonStep, (step) => step.lesson)
   steps: LessonStep[];
+
+  @OneToMany(() => UserLesson, (userLesson) => userLesson.user)
+  users: UserLesson[];
 
   @Column({ type: 'int' })
   order: number;

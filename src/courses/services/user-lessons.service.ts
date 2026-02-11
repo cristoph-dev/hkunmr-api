@@ -38,7 +38,6 @@ export class UserLessonsService {
         lesson: { id: lessonId },
         user: { id: userId },
       },
-      relations: ['lesson', 'user'],
     });
   }
 
@@ -100,7 +99,6 @@ export class UserLessonsService {
   async getUserLessons(userId: number): Promise<UserLesson[]> {
     return await this.userLessonRepository.find({
       where: { user: { id: userId } },
-      relations: ['lesson', 'lesson.steps'],
       order: { started_at: 'DESC' },
     });
   }

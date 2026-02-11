@@ -40,12 +40,10 @@ export class UserCoursesService {
         course: { id: courseId },
         user: { id: userId },
       },
-      relations: ['course', 'user'],
     });
   }
 
   async enroll(courseId: number, userId: number): Promise<UserCourse> {
-    // Fetch course and check enrollment in parallel
     const [course, alreadyEnrolled] = await Promise.all([
       this.courseRepository.findOne({
         where: {
@@ -103,7 +101,6 @@ export class UserCoursesService {
   async getUserCourses(userId: number): Promise<UserCourse[]> {
     return await this.userCourseRepository.find({
       where: { user: { id: userId } },
-      relations: ['course', 'course.lessons'],
       order: { enrolled_at: 'DESC' },
     });
   }

@@ -11,7 +11,10 @@ import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { CoursesService } from '../services/courses.service';
 import { UserCoursesService } from '../services/user-courses.service';
 import { Course } from '../entities/course.entity';
-
+import { CourseResponseDto } from '../dto/response/course-response.dto';
+import { CreateCourseDto } from '../dto/create-course.dto';
+import { UpdateCourseDto } from '../dto/update-course.dto';
+import { UserIdDto } from 'src/common/dto/user-id.dto';
 @ApiTags('courses')
 @Controller('courses')
 export class CoursesController {
@@ -25,7 +28,7 @@ export class CoursesController {
   @ApiResponse({
     status: 200,
     description: 'Retorna todos los cursos',
-    type: [Course],
+    type: [CourseResponseDto],
   })
   findAll(): Promise<Course[]> {
     return this.coursesService.findAll();
@@ -33,7 +36,11 @@ export class CoursesController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Obtener un curso por ID' })
-  @ApiResponse({ status: 200, description: 'Retorna un curso', type: Course })
+  @ApiResponse({
+    status: 200,
+    description: 'Retorna un curso',
+    type: CourseResponseDto,
+  })
   @ApiResponse({ status: 404, description: 'Curso no encontrado' })
   findOne(@Param('id') id: string): Promise<Course> {
     return this.coursesService.findOne(+id);
@@ -44,9 +51,9 @@ export class CoursesController {
   @ApiResponse({
     status: 201,
     description: 'Curso creado exitosamente',
-    type: Course,
+    type: CourseResponseDto,
   })
-  create(@Body() courseData: Partial<Course>): Promise<Course> {
+  create(@Body() courseData: CreateCourseDto): Promise<Course> {
     return this.coursesService.create(courseData);
   }
 
@@ -55,12 +62,12 @@ export class CoursesController {
   @ApiResponse({
     status: 200,
     description: 'Curso actualizado exitosamente',
-    type: Course,
+    type: CourseResponseDto,
   })
   @ApiResponse({ status: 404, description: 'Curso no encontrado' })
   update(
     @Param('id') id: string,
-    @Body() courseData: Partial<Course>,
+    @Body() courseData: UpdateCourseDto,
   ): Promise<Course> {
     return this.coursesService.update(+id, courseData);
   }
@@ -80,8 +87,9 @@ export class CoursesController {
   @ApiResponse({ status: 400, description: 'Ya está inscrito en este curso' })
   async enroll(
     @Param('id') courseId: string,
-    @Body('userId') userId: number,
+    @Body() enrollDto: UserIdDto,
   ): Promise<{ message: string }> {
+    const userId = enrollDto.userId;
     await this.userCoursesService.enroll(+courseId, userId);
     return { message: 'Inscripción exitosa' };
   }

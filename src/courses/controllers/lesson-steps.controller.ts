@@ -10,6 +10,7 @@ import {
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { LessonStepsService } from '../services/lesson-steps.service';
 import { LessonStep } from '../entities/lesson-step.entity';
+import { LessonStepResponseDto } from '../dto/response/lesson-step-response.dto';
 
 @ApiTags('lesson-steps')
 @Controller('lesson-steps')
@@ -21,7 +22,7 @@ export class LessonStepsController {
   @ApiResponse({
     status: 200,
     description: 'Retorna todos los pasos de lección',
-    type: [LessonStep],
+    type: [LessonStepResponseDto],
   })
   findAll(): Promise<LessonStep[]> {
     return this.lessonStepsService.findAll();
@@ -32,7 +33,7 @@ export class LessonStepsController {
   @ApiResponse({
     status: 200,
     description: 'Retorna un paso de lección',
-    type: LessonStep,
+    type: LessonStepResponseDto,
   })
   @ApiResponse({ status: 404, description: 'Paso de lección no encontrado' })
   findOne(@Param('id') id: string): Promise<LessonStep> {
@@ -44,7 +45,7 @@ export class LessonStepsController {
   @ApiResponse({
     status: 201,
     description: 'Paso de lección creado exitosamente',
-    type: LessonStep,
+    type: LessonStepResponseDto,
   })
   create(@Body() lessonStepData: Partial<LessonStep>): Promise<LessonStep> {
     return this.lessonStepsService.create(lessonStepData);
@@ -55,7 +56,7 @@ export class LessonStepsController {
   @ApiResponse({
     status: 200,
     description: 'Paso de lección actualizado exitosamente',
-    type: LessonStep,
+    type: LessonStepResponseDto,
   })
   @ApiResponse({ status: 404, description: 'Paso de lección no encontrado' })
   update(

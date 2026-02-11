@@ -10,6 +10,7 @@ import {
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { LessonsService } from '../services/lessons.service';
 import { Lesson } from '../entities/lesson.entity';
+import { LessonResponseDto } from '../dto/response/lesson-response.dto';
 
 @ApiTags('lessons')
 @Controller('lessons')
@@ -21,7 +22,7 @@ export class LessonsController {
   @ApiResponse({
     status: 200,
     description: 'Retorna todas las lecciones',
-    type: [Lesson],
+    type: [LessonResponseDto],
   })
   findAll(): Promise<Lesson[]> {
     return this.lessonsService.findAll();
@@ -32,7 +33,7 @@ export class LessonsController {
   @ApiResponse({
     status: 200,
     description: 'Retorna una lección',
-    type: Lesson,
+    type: LessonResponseDto,
   })
   @ApiResponse({ status: 404, description: 'Lección no encontrada' })
   findOne(@Param('id') id: string): Promise<Lesson> {
@@ -44,7 +45,7 @@ export class LessonsController {
   @ApiResponse({
     status: 201,
     description: 'Lección creada exitosamente',
-    type: Lesson,
+    type: LessonResponseDto,
   })
   create(@Body() lessonData: Partial<Lesson>): Promise<Lesson> {
     return this.lessonsService.create(lessonData);
@@ -55,7 +56,7 @@ export class LessonsController {
   @ApiResponse({
     status: 200,
     description: 'Lección actualizada exitosamente',
-    type: Lesson,
+    type: LessonResponseDto,
   })
   @ApiResponse({ status: 404, description: 'Lección no encontrada' })
   update(

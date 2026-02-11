@@ -13,7 +13,6 @@ export class CoursesService {
   async findAll(): Promise<Course[]> {
     return await this.courseRepository.find({
       where: { is_active: true },
-      relations: ['lessons'],
       order: { position: 'ASC' },
     });
   }
@@ -21,7 +20,6 @@ export class CoursesService {
   async findOne(id: number): Promise<Course> {
     const course = await this.courseRepository.findOne({
       where: { id, is_active: true },
-      relations: ['lessons', 'lessons.steps'],
     });
 
     if (!course) {

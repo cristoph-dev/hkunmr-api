@@ -6,3 +6,9 @@ export const ErrorMessages = {
 } as const;
 
 export const EmailDomain = 'unimar.edu.ve';
+
+export enum ProgressEnum {
+  NOT_STARTED = 'not_started',
+  IN_PROGRESS = 'in_progress',
+  COMPLETED = 'completed',
+}

@@ -19,7 +19,7 @@ import {
   LoginResponseDto,
   RefreshTokenDto,
 } from '../dto';
-import type { AuthenticatedRequest } from 'src/lib/types';
+import type { AuthenticatedRequest } from 'src/common/lib/types';
 import { SuccessResponseDto } from '@common/dto';
 import { JwtRefreshGuard } from '../guards/jwt-refresh.guard';
 

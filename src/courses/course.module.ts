@@ -6,6 +6,14 @@ import { Lesson } from './entities/lesson.entity';
 import { Course } from './entities/course.entity';
 import { UserCourse } from './entities/course-user.entity';
 import { UserLesson } from './entities/lesson-user.entity';
+import { CoursesController } from './controllers/courses.controller';
+import { LessonsController } from './controllers/lessons.controller';
+import { LessonStepsController } from './controllers/lesson-steps.controller';
+import { CoursesService } from './services/courses.service';
+import { LessonsService } from './services/lessons.service';
+import { LessonStepsService } from './services/lesson-steps.service';
+import { UserCoursesService } from './services/user-courses.service';
+import { UserLessonsService } from './services/user-lessons.service';
 
 @Module({
   imports: [
@@ -17,6 +25,21 @@ import { UserLesson } from './entities/lesson-user.entity';
       UserCourse,
       UserLesson,
     ]),
+  ],
+  controllers: [CoursesController, LessonsController, LessonStepsController],
+  providers: [
+    CoursesService,
+    LessonsService,
+    LessonStepsService,
+    UserCoursesService,
+    UserLessonsService,
+  ],
+  exports: [
+    CoursesService,
+    LessonsService,
+    LessonStepsService,
+    UserCoursesService,
+    UserLessonsService,
   ],
 })
 export class CoursesModule {}

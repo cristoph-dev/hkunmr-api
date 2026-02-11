@@ -1,15 +1,3 @@
-import { IsEmail, IsNotEmpty, Matches } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { EmailDto } from 'src/common/dto/email.dto';
 
-export class ForgotPasswordDto {
-  @ApiProperty({
-    example: 'usuario@example.com',
-    description: 'Correo electrónico del usuario',
-  })
-  @IsEmail()
-  @Matches(/^[^\s@]+@unimar\.edu\.ve$/, {
-    message: 'El correo electrónico debe pertenecer al dominio @unimar.edu.ve',
-  })
-  @IsNotEmpty()
-  email: string;
-}
+export class ForgotPasswordDto extends EmailDto {}

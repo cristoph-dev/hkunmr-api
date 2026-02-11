@@ -12,6 +12,8 @@ import { RoleService } from '../services/role.service';
 import { CreateRoleDto } from '../dto/create-role.dto';
 import { Role } from '../entities';
 
+import { UpdateRoleDto } from '../dto/update-role.dto';
+
 @ApiTags('Roles')
 @Controller('roles')
 export class RoleController {
@@ -40,7 +42,7 @@ export class RoleController {
   @Patch(':id')
   async update(
     @Param('id') id: number,
-    @Body() data: CreateRoleDto,
+    @Body() data: UpdateRoleDto,
   ): Promise<Role> {
     return this.roleService.update(id, data);
   }

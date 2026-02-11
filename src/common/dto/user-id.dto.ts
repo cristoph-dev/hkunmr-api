@@ -4,7 +4,7 @@ import { IsNumber } from 'class-validator';
 export class UserIdDto {
   @ApiProperty({
     example: 1,
-    description: 'ID del usuario a inscribir',
+    description: 'ID del usuario',
   })
   @IsNumber()
   userId: number;

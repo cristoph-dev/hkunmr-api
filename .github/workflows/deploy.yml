@@ -33,6 +33,6 @@ jobs:
             npm run build
 
             echo "Restarting application..."
-            pm2 restart hkunmr-api
+            pm2 restart hkunmr-api --silent > /dev/null 2>&1
 
             echo "Deploy complete!"

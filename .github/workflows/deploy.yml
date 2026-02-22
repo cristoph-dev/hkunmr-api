@@ -27,7 +27,7 @@ jobs:
             git pull origin main
 
             echo "Installing dependencies..."
-            npm ci --prefer-offline
+            npm install
 
             echo "Building..."
             npm run build

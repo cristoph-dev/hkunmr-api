@@ -1,19 +1,9 @@
-import { IsEmail, IsEnum, IsNotEmpty, Matches } from 'class-validator';
+import { IsEnum, IsNotEmpty } from 'class-validator';
 import { OTPEnum } from '../types/otp-type.enum';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, IntersectionType } from '@nestjs/swagger';
+import { EmailDto } from 'src/common/dto/email.dto';
 
-export class CreateOtpDto {
-  @ApiProperty({
-    example: 'usuario@example.com',
-    description: 'Correo electrónico del usuario',
-  })
-  @IsEmail()
-  @Matches(/^[^\s@]+@unimar\.edu\.ve$/, {
-    message: 'El correo electrónico debe pertenecer al dominio @unimar.edu.ve',
-  })
-  @IsNotEmpty()
-  email: string;
-
+class OtpTypeDto {
   @ApiProperty({
     enum: OTPEnum,
     example: OTPEnum.VERIFICATION,
@@ -23,3 +13,5 @@ export class CreateOtpDto {
   @IsNotEmpty()
   type: OTPEnum;
 }
+
+export class CreateOtpDto extends IntersectionType(EmailDto, OtpTypeDto) {}

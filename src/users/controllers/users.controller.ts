@@ -1,6 +1,11 @@
 import { Controller, Post, Param, ParseIntPipe } from '@nestjs/common';
 import { UsersService } from '../services/users.service';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiBearerAuth,
+  ApiResponse,
+} from '@nestjs/swagger';
 import { Admin } from 'src/common/guards/role.guard';
 import { SuccessResponseDto } from 'src/common/dto';
 
@@ -12,6 +17,7 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @ApiOperation({ summary: 'Assign a role to a user' })
+  @ApiResponse({ status: 200, type: SuccessResponseDto })
   @Post(':id/roles/:roleId/assign')
   async assignRole(
     @Param('id', ParseIntPipe) id: number,
@@ -25,6 +31,7 @@ export class UsersController {
   }
 
   @ApiOperation({ summary: 'Revoke a role from a user' })
+  @ApiResponse({ status: 200, type: SuccessResponseDto })
   @Post(':id/roles/:roleId/revoke')
   async revokeRole(
     @Param('id', ParseIntPipe) id: number,

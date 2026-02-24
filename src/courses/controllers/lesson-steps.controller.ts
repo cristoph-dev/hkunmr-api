@@ -7,12 +7,18 @@ import {
   Param,
   Delete,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { LessonStepsService } from '../services/lesson-steps.service';
 import { LessonStep } from '../entities/lesson-step.entity';
 import { LessonStepResponseDto } from '../dto/response/lesson-step-response.dto';
 import { AllRoles, Teacher } from 'src/common/guards/role.guard';
 @ApiTags('lesson-steps')
+@ApiBearerAuth()
 @Controller('lesson-steps')
 export class LessonStepsController {
   constructor(private readonly lessonStepsService: LessonStepsService) {}

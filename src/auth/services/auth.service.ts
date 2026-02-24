@@ -77,7 +77,6 @@ export class AuthService {
    */
   async validateUser(email: string, password: string): Promise<User | null> {
     const user = await this.usersService.findByEmail(email);
-    console.log(user);
     if (!user) {
       return null;
     }
@@ -90,7 +89,6 @@ export class AuthService {
     }
 
     if (!user.roles || user.roles.length === 0) {
-      console.log('User has no roles assigned');
       throw new UnauthorizedException('User has no roles assigned');
     }
     delete user.password;

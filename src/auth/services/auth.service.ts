@@ -18,6 +18,7 @@ import {
   RegistrationPayload,
   ResetPayload,
 } from '../types/registration-payload.interface';
+import { JwtPayload } from '../strategies/jwt.strategy';
 
 @Injectable()
 export class AuthService {
@@ -32,9 +33,10 @@ export class AuthService {
   private async generateTokens(
     payload: UserPayload,
   ): Promise<LoginResponseDto> {
-    const jwtPayload = {
+    const jwtPayload: JwtPayload = {
       sub: payload.id,
       email: payload.email,
+      roles: payload.roles,
     };
 
     const [accessToken, refreshToken] = await Promise.all([
@@ -75,6 +77,7 @@ export class AuthService {
    */
   async validateUser(email: string, password: string): Promise<User | null> {
     const user = await this.usersService.findByEmail(email);
+    console.log(user);
     if (!user) {
       return null;
     }
@@ -85,6 +88,11 @@ export class AuthService {
     if (user.is_active === false || user.email_verified === false) {
       throw new BadRequestException('Email not verified');
     }
+
+    if (!user.roles || user.roles.length === 0) {
+      console.log('User has no roles assigned');
+      throw new UnauthorizedException('User has no roles assigned');
+    }
     delete user.password;
     return user;
   }
@@ -92,8 +100,13 @@ export class AuthService {
   /**
    * Usado por AuthController después del guard
    */
-  async login(user: UserPayload): Promise<LoginResponseDto> {
-    return this.generateTokens(user);
+  async login(user: User): Promise<LoginResponseDto> {
+    const payload: UserPayload = {
+      id: user.id,
+      email: user.email,
+      roles: user.roles.map((r) => r.description),
+    };
+    return this.generateTokens(payload);
   }
 
   private validateEmail(email: string): void {
@@ -288,6 +301,7 @@ export class AuthService {
     return this.generateTokens({
       id: user.id,
       email: user.email,
+      roles: user.roles.map((r) => r.description),
     });
   }
 }

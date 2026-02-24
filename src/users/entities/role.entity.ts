@@ -2,24 +2,27 @@ import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
-  OneToMany,
+  ManyToMany,
   CreateDateColumn,
   UpdateDateColumn,
+  Unique,
 } from 'typeorm';
 import { User } from './user.entity';
+import { AuthRole } from 'src/common/guards/role.guard';
 
 @Entity('roles')
+@Unique(['description'])
 export class Role {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ length: 50 })
-  description: string;
+  @Column({ length: 30 })
+  description: AuthRole;
 
   @Column({ default: true })
   is_active: boolean;
 
-  @OneToMany(() => User, (user) => user.role)
+  @ManyToMany(() => User, (user) => user.roles)
   users: User[];
 
   @CreateDateColumn()

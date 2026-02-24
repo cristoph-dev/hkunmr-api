@@ -19,7 +19,8 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "db:seed:courses": "ts-node -r tsconfig-paths/register src/courses/courses.seeder.ts",
-    "db:seed": "npm run db:seed:courses"
+    "db:seed:users": "ts-node -r tsconfig-paths/register src/users/users.seeder.ts",
+    "db:seed": "npm run db:seed:users && npm run db:seed:courses"
   },
   "dependencies": {
     "@nestjs-modules/mailer": "^2.0.2",

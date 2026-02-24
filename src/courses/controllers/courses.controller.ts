@@ -7,7 +7,12 @@ import {
   Param,
   Delete,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { CoursesService } from '../services/courses.service';
 import { UserCoursesService } from '../services/user-courses.service';
 import { Course } from '../entities/course.entity';
@@ -15,6 +20,8 @@ import { CourseResponseDto } from '../dto/response/course-response.dto';
 import { CreateCourseDto } from '../dto/create-course.dto';
 import { UpdateCourseDto } from '../dto/update-course.dto';
 import { UserIdDto } from 'src/common/dto/user-id.dto';
+import { AllRoles, Student, Teacher } from 'src/common/guards/role.guard';
+@ApiBearerAuth()
 @ApiTags('courses')
 @Controller('courses')
 export class CoursesController {
@@ -24,6 +31,7 @@ export class CoursesController {
   ) {}
 
   @Get()
+  @AllRoles()
   @ApiOperation({ summary: 'Obtener todos los cursos' })
   @ApiResponse({
     status: 200,
@@ -35,6 +43,7 @@ export class CoursesController {
   }
 
   @Get(':id')
+  @AllRoles()
   @ApiOperation({ summary: 'Obtener un curso por ID' })
   @ApiResponse({
     status: 200,
@@ -47,6 +56,7 @@ export class CoursesController {
   }
 
   @Post()
+  @Teacher()
   @ApiOperation({ summary: 'Crear un nuevo curso' })
   @ApiResponse({
     status: 201,
@@ -58,6 +68,7 @@ export class CoursesController {
   }
 
   @Patch(':id')
+  @Teacher()
   @ApiOperation({ summary: 'Actualizar un curso' })
   @ApiResponse({
     status: 200,
@@ -73,6 +84,7 @@ export class CoursesController {
   }
 
   @Delete(':id')
+  @Teacher()
   @ApiOperation({ summary: 'Eliminar un curso (soft delete)' })
   @ApiResponse({ status: 200, description: 'Curso eliminado exitosamente' })
   @ApiResponse({ status: 404, description: 'Curso no encontrado' })
@@ -81,6 +93,7 @@ export class CoursesController {
   }
 
   @Post(':id/enroll')
+  @Student()
   @ApiOperation({ summary: 'Inscribirse en un curso' })
   @ApiResponse({ status: 201, description: 'Inscripción exitosa' })
   @ApiResponse({ status: 404, description: 'Curso no encontrado' })

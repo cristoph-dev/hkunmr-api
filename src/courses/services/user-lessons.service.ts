@@ -16,13 +16,13 @@ export class UserLessonsService {
     private readonly userLessonRepository: Repository<UserLesson>,
     @InjectRepository(Lesson)
     private readonly lessonRepository: Repository<Lesson>,
-  ) {}
+  ) { }
 
   async isEnrolled(lessonId: number, userId: number): Promise<boolean> {
     const enrollment = await this.userLessonRepository.findOne({
       where: {
         lesson: { id: lessonId },
-        user: { id: userId },
+        course_user: { user: { id: userId } },
       },
     });
 
@@ -36,7 +36,7 @@ export class UserLessonsService {
     return await this.userLessonRepository.findOne({
       where: {
         lesson: { id: lessonId },
-        user: { id: userId },
+        course_user: { user: { id: userId } },
       },
     });
   }
@@ -56,7 +56,7 @@ export class UserLessonsService {
 
     const enrollment = this.userLessonRepository.create({
       lesson: { id: lessonId },
-      user: { id: userId },
+      course_user: { user: { id: userId } },
       progress: ProgressEnum.NOT_STARTED,
     });
 
@@ -65,12 +65,12 @@ export class UserLessonsService {
 
   async enrollInMultipleLessons(
     lessons: Array<{ id: number; order: number }>,
-    userId: number,
+    courseUserId: number,
   ): Promise<UserLesson[]> {
     const enrollments = lessons.map((lesson) =>
       this.userLessonRepository.create({
         lesson: { id: lesson.id },
-        user: { id: userId },
+        course_user: { id: courseUserId },
         progress:
           lesson.order === 1
             ? ProgressEnum.IN_PROGRESS
@@ -96,9 +96,9 @@ export class UserLessonsService {
     return await this.userLessonRepository.save(enrollment);
   }
 
-  async getUserLessons(userId: number): Promise<UserLesson[]> {
+  async getUserLessons(id: number): Promise<UserLesson[]> {
     return await this.userLessonRepository.find({
-      where: { user: { id: userId } },
+      where: { course_user: { user: { id } } },
       order: { started_at: 'DESC' },
     });
   }

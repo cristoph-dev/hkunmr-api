@@ -14,6 +14,7 @@ import { LessonsService } from './services/lessons.service';
 import { LessonStepsService } from './services/lesson-steps.service';
 import { UserCoursesService } from './services/user-courses.service';
 import { UserLessonsService } from './services/user-lessons.service';
+import { UserStep } from './entities/lesson-step-user.entity';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { UserLessonsService } from './services/user-lessons.service';
       Course,
       UserCourse,
       UserLesson,
+      UserStep,
     ]),
   ],
   controllers: [CoursesController, LessonsController, LessonStepsController],
@@ -42,4 +44,4 @@ import { UserLessonsService } from './services/user-lessons.service';
     UserLessonsService,
   ],
 })
-export class CoursesModule {}
+export class CoursesModule { }

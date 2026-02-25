@@ -6,9 +6,11 @@ import {
   UpdateDateColumn,
   ManyToOne,
   Unique,
+  OneToMany,
 } from 'typeorm';
 import { Lesson } from './lesson.entity';
 import { LessonStepType } from './lesson-step-type.entity';
+import { UserStep } from './lesson-step-user.entity';
 
 @Entity('lesson_steps')
 @Unique(['lesson', 'order'])
@@ -48,6 +50,9 @@ export class LessonStep {
     (lessonStepType) => lessonStepType.lessonSteps,
   )
   lessonStepType: LessonStepType;
+
+  @OneToMany(() => UserStep, (userStep) => userStep.step)
+  user_steps: UserStep[];
 
   @Column()
   is_active: boolean;

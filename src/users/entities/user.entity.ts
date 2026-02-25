@@ -7,14 +7,12 @@ import {
   OneToMany,
   ManyToMany,
   JoinTable,
-  Unique,
 } from 'typeorm';
 import { Role } from './role.entity';
 import { UserCourse } from 'src/courses/entities/course-user.entity';
 import { Classroom } from 'src/classroom/entities/classroom.entity';
 
 @Entity('users')
-@Unique(['email'])
 export class User {
   @PrimaryGeneratedColumn()
   id: number;

@@ -6,12 +6,14 @@ import {
   Patch,
   Param,
   Delete,
+  Query,
 } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { CoursesService } from '../services/courses.service';
 import { UserCoursesService } from '../services/user-courses.service';
@@ -19,8 +21,10 @@ import { Course } from '../entities/course.entity';
 import { CourseResponseDto } from '../dto/response/course-response.dto';
 import { CreateCourseDto } from '../dto/create-course.dto';
 import { UpdateCourseDto } from '../dto/update-course.dto';
-import { UserIdDto } from 'src/common/dto/user-id.dto';
 import { AllRoles, Student, Teacher } from 'src/common/guards/role.guard';
+import { AuthenticatedUser } from 'src/common/decorators/authenticated.decorator';
+import type { UserPayload } from 'src/common/lib/types';
+import { UserCourse } from '../entities/course-user.entity';
 @ApiBearerAuth()
 @ApiTags('courses')
 @Controller('courses')
@@ -28,7 +32,7 @@ export class CoursesController {
   constructor(
     private readonly coursesService: CoursesService,
     private readonly userCoursesService: UserCoursesService,
-  ) {}
+  ) { }
 
   @Get()
   @AllRoles()
@@ -92,6 +96,22 @@ export class CoursesController {
     return this.coursesService.remove(+id);
   }
 
+  @Get('user/enroll')
+  @ApiQuery({
+    name: 'cascade',
+    required: false,
+    type: Boolean,
+    description: 'Obtener toda data de los cursos del usuario',
+  })
+  @ApiOperation({ summary: 'Obtener todos los cursos del usuario' })
+  @ApiResponse({
+    status: 200,
+    description: 'Retorna todos los cursos del usuario',
+  })
+  findByUser(@AuthenticatedUser() user: UserPayload, @Query('cascade') cascade?: boolean): Promise<UserCourse[]> {
+    return this.coursesService.findByUserId(user.id, cascade);
+  }
+
   @Post(':id/enroll')
   @Student()
   @ApiOperation({ summary: 'Inscribirse en un curso' })
@@ -100,10 +120,9 @@ export class CoursesController {
   @ApiResponse({ status: 400, description: 'Ya está inscrito en este curso' })
   async enroll(
     @Param('id') courseId: string,
-    @Body() enrollDto: UserIdDto,
+    @AuthenticatedUser() user: UserPayload,
   ): Promise<{ message: string }> {
-    const userId = enrollDto.userId;
-    await this.userCoursesService.enroll(+courseId, userId);
+    await this.userCoursesService.enroll(+courseId, user.id);
     return { message: 'Inscripción exitosa' };
   }
 }

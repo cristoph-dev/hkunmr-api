@@ -7,24 +7,29 @@ import {
   UpdateDateColumn,
   JoinColumn,
   Unique,
+  OneToMany,
 } from 'typeorm';
-import { User } from 'src/users/entities/user.entity';
 import { ProgressEnum } from 'src/common/lib/const';
 import { Lesson } from './lesson.entity';
+import { UserCourse } from './course-user.entity';
+import { UserStep } from './lesson-step-user.entity';
 
 @Entity('user_lesson')
-@Unique(['user', 'lesson'])
+@Unique(['course_user', 'lesson'])
 export class UserLesson {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne(() => User, (user) => user.courses, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'user_id' })
-  user: User;
+  @ManyToOne(() => UserCourse, (user) => user.user_lessons, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'course_user_id' })
+  course_user: UserCourse;
 
-  @ManyToOne(() => Lesson, (lesson) => lesson.users, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Lesson, (lesson) => lesson.user_lessons, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'lesson_id' })
   lesson: Lesson;
+
+  @OneToMany(() => UserStep, (userStep) => userStep.user_lesson)
+  user_steps: UserStep[];
 
   @Column({
     type: 'enum',

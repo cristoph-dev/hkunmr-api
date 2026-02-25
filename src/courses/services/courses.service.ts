@@ -2,18 +2,34 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Course } from '../entities/course.entity';
+import { UserCourse } from '../entities/course-user.entity';
 
 @Injectable()
 export class CoursesService {
   constructor(
     @InjectRepository(Course)
     private readonly courseRepository: Repository<Course>,
-  ) {}
+    @InjectRepository(UserCourse)
+    private readonly userCourseRepository: Repository<UserCourse>,
+  ) { }
 
   async findAll(): Promise<Course[]> {
     return await this.courseRepository.find({
       where: { is_active: true },
+      relations: ['lessons'],
       order: { position: 'ASC' },
+    });
+  }
+
+  async findByUserId(id: number, cascadeData: boolean = false): Promise<UserCourse[]> {
+    const relations = ['course'];
+    if (Boolean(cascadeData)) {
+      relations.push('user_lessons', 'user_lessons.user_steps', 'user_lessons.lesson');
+    }
+
+    return await this.userCourseRepository.find({
+      where: { user: { id } },
+      relations,
     });
   }
 

@@ -106,13 +106,8 @@ export class AuthService {
   /**
    * Usado por AuthController después del guard
    */
-  async login(user: User): Promise<LoginResponseDto> {
-    const payload: UserPayload = {
-      id: user.id,
-      email: user.email,
-      roles: user.roles.map((r) => r.description),
-    };
-    return this.generateTokens(payload);
+  async login(user: UserPayload): Promise<LoginResponseDto> {
+    return this.generateTokens(user);
   }
 
   private validateEmail(email: string): void {

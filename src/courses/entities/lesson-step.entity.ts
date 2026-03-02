@@ -36,8 +36,8 @@ export class LessonStep {
   @Column()
   solution: string;
 
-  @Column({ type: 'json' })
-  options: any;
+  @Column()
+  options: string;
 
   @ManyToOne(
     () => LessonStepType,

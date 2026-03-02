@@ -48,7 +48,7 @@ export class AuthController {
   @ApiResponse({ status: 200, type: LoginResponseDto })
   async login(@Request() req: AuthenticatedRequest): Promise<LoginResponseDto> {
     // req.user viene desde LocalStrategy
-    return await this.authService.login(req.user as unknown as User);
+    return await this.authService.login(req.user);
   }
 
   @UseGuards(JwtRefreshGuard)

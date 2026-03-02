@@ -10,7 +10,7 @@ import { OtpService } from './otp.service';
 import { OTPEnum } from '../types/otp-type.enum';
 import * as bcrypt from 'bcrypt';
 import { UserPayload } from 'src/common/lib/types';
-import { User } from 'src/users/entities';
+import { Role, User } from 'src/users/entities';
 import { LoginResponseDto } from '../dto/login-response.dto';
 import { ConfigService } from '@nestjs/config';
 import { EmailDomain } from 'src/common/lib/const';
@@ -19,6 +19,14 @@ import {
   ResetPayload,
 } from '../types/registration-payload.interface';
 import { JwtPayload } from '../strategies/jwt.strategy';
+// fix: registrarle su rol
+import { AuthRole } from 'src/common/guards/role.guard';
+//fix2: registrarle siempre el 1er curso 
+import { Course } from 'src/courses/entities/course.entity';
+import { UserCourse } from 'src/courses/entities/course-user.entity';
+import { Lesson } from 'src/courses/entities/lesson.entity';
+import { UserLesson } from 'src/courses/entities/lesson-user.entity';
+import { ProgressEnum } from 'src/common/lib/const';
 
 @Injectable()
 export class AuthService {
@@ -259,12 +267,12 @@ export class AuthService {
         throw new UnauthorizedException('Invalid code');
       }
 
-      const existingUser = await this.usersService.findByEmail(payload.email);
+    const existingUser = await this.usersService.findByEmail(payload.email);
       if (existingUser) {
         throw new BadRequestException('User already exists');
       }
 
-      await this.usersService.create(
+      const user = await this.usersService.create( //Crear usuario
         {
           name: payload.name,
           lastname: payload.lastname,
@@ -276,8 +284,80 @@ export class AuthService {
         queryRunner.manager,
       );
 
+      const roleRepository = queryRunner.manager.getRepository(Role); // Buscar rol Estudiante por defecto
+
+      const defaultRole = await roleRepository.findOne({
+        where: {
+          description: AuthRole.Student,
+          is_active: true,
+        },
+      });
+
+      if (!defaultRole) {
+        throw new BadRequestException('Default role not found');
+      }
+
+      await queryRunner.manager // Asignar rol al usuario
+        .createQueryBuilder()
+        .relation(User, 'roles')
+        .of(user.id)
+        .add(defaultRole.id);
+
+      const courseRepository = queryRunner.manager.getRepository(Course); // Obtener todos los cursos activos con lecciones
+
+      const activeCourses = await courseRepository.find({
+        where: { is_active: true },
+        relations: ['lessons'],
+      });
+
+      if (!activeCourses.length) {
+        throw new BadRequestException('No active courses found');
+      }
+
+      const userCourseRepository =
+        queryRunner.manager.getRepository(UserCourse);
+
+      const userLessonRepository =
+        queryRunner.manager.getRepository(UserLesson);
+
+      let coursesToEnroll: Course[] = []; // Determinar cursos según rol
+
+      if (defaultRole.description === AuthRole.Student) {
+        const firstCourse = activeCourses.find((c) => c.id === 1);
+        if (firstCourse) {
+          coursesToEnroll.push(firstCourse);
+        }
+      } else if (
+        defaultRole.description === AuthRole.Teacher ||
+        defaultRole.description === AuthRole.Admins
+      ) {
+        coursesToEnroll = activeCourses;
+      }
+
+      for (const course of coursesToEnroll) { // Inscribir al usuario en los cursos correspondientes
+        const userCourse = await userCourseRepository.save({
+          user: { id: user.id },
+          course: { id: course.id },
+          progress: ProgressEnum.IN_PROGRESS,
+        });
+
+        const lessonEnrollments = course.lessons.map((lesson, index) =>
+          userLessonRepository.create({
+            lesson: { id: lesson.id },
+            course_user: { id: userCourse.id },
+            progress:
+              index === 0
+                ? ProgressEnum.IN_PROGRESS
+                : ProgressEnum.NOT_STARTED,
+          }),
+        );
+
+        await userLessonRepository.save(lessonEnrollments);
+      }
+
       await queryRunner.commitTransaction();
       return true;
+
     } catch (err) {
       await queryRunner.rollbackTransaction();
       throw err;

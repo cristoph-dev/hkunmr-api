@@ -13,20 +13,24 @@ import { Classroom } from 'src/classroom/entities/classroom.entity';
 
 @Entity('courses')
 export class Course {
+
   @PrimaryGeneratedColumn()
   id: number;
 
-  @OneToMany(() => UserCourse, (userCourse) => userCourse.course)
-  users: UserCourse[];
+  @Column({ length: 150 })
+  title: string;
 
   @Column()
   is_active: boolean;
 
-  @OneToMany(() => Lesson, (lesson) => lesson.course)
-  lessons: Lesson[];
-
   @Column()
   position: number;
+
+  @OneToMany(() => UserCourse, (userCourse) => userCourse.course)
+  users: UserCourse[];
+
+  @OneToMany(() => Lesson, (lesson) => lesson.course)
+  lessons: Lesson[];
 
   @ManyToMany(() => Classroom, (classroom) => classroom.courses)
   classrooms: Classroom[];

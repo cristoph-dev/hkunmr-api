@@ -34,17 +34,27 @@ export class CoursesController {
     private readonly userCoursesService: UserCoursesService,
   ) { }
 
-  @Get()
-  @AllRoles()
-  @ApiOperation({ summary: 'Obtener todos los cursos' })
-  @ApiResponse({
-    status: 200,
-    description: 'Retorna todos los cursos',
-    type: [CourseResponseDto],
-  })
-  findAll(): Promise<Course[]> {
-    return this.coursesService.findAll();
-  }
+    @Get()
+    @Teacher()
+    @ApiQuery({
+      name: 'cascade',
+      required: false,
+      type: String,
+      example: 'full',
+      description: 'Usar "full" para traer lessons y steps',
+    })
+    @ApiOperation({ summary: 'Obtener todos los cursos (modo gestión)' })
+    @ApiResponse({
+      status: 200,
+      description: 'Retorna todos los cursos',
+      type: [CourseResponseDto],
+    })
+    findAll(
+      @Query('cascade') cascade?: string,
+    ): Promise<Course[]> {
+      return this.coursesService.findAll(cascade);
+    }
+
 
   @Get(':id')
   @AllRoles()
@@ -125,4 +135,19 @@ export class CoursesController {
     await this.userCoursesService.enroll(+courseId, user.id);
     return { message: 'Inscripción exitosa' };
   }
+
+@Post(':courseId/users/:userId')
+@Teacher() 
+@ApiOperation({ summary: 'Inscribir un usuario en un curso [Profesor/admin]'})
+@ApiResponse({ status: 201, description: 'Usuario inscrito exitosamente' })
+@ApiResponse({ status: 404, description: 'Curso o usuario no encontrado' })
+@ApiResponse({ status: 400, description: 'El usuario ya está inscrito' })
+async enrollUserByAdmin(
+  @Param('courseId') courseId: string,
+  @Param('userId') userId: string,
+): Promise<{ message: string }> {
+  await this.userCoursesService.enroll(+courseId, +userId);
+  return { message: 'Usuario inscrito exitosamente' };
+}
+
 }

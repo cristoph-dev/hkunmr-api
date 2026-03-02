@@ -13,11 +13,25 @@ export class CoursesService {
     private readonly userCourseRepository: Repository<UserCourse>,
   ) { }
 
-  async findAll(): Promise<Course[]> {
+  async findAll(cascade?: string): Promise<Course[]> {
+    if (cascade === 'full') {
+      return await this.courseRepository
+        .createQueryBuilder('course')
+        .leftJoinAndSelect('course.lessons', 'lesson')
+        .leftJoinAndSelect('lesson.steps', 'step')
+        .where('course.is_active = :active', { active: true })
+        .orderBy('course.position', 'ASC')
+        .addOrderBy('lesson.order', 'ASC')
+        .addOrderBy('step.order', 'ASC')
+        .getMany();
+    }
+
     return await this.courseRepository.find({
       where: { is_active: true },
       relations: ['lessons'],
-      order: { position: 'ASC' },
+      order: {
+        position: 'ASC',
+      },
     });
   }
 

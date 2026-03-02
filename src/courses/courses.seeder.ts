@@ -274,9 +274,21 @@ class CoursesSeeder {
     console.log('            Creating courses...');
 
     const [course1, course2, _course3] = await Promise.all([
-      this.queryRunner.manager.save(Course, { is_active: true, position: 1 }),
-      this.queryRunner.manager.save(Course, { is_active: true, position: 2 }),
-      this.queryRunner.manager.save(Course, { is_active: false, position: 3 }),
+      this.queryRunner.manager.save(Course, {
+        title: 'Fundamentos de la seguridad informatica',
+        is_active: true,
+        position: 1,
+      }),
+      this.queryRunner.manager.save(Course, {
+        title: 'Introduccion a Linux',
+        is_active: true,
+        position: 2,
+      }),
+      this.queryRunner.manager.save(Course, {
+        title: 'Curso inactivo',
+        is_active: false,
+        position: 3,
+      }),
     ]);
 
     console.log('            Created 3 courses (2 active, 1 inactive)');

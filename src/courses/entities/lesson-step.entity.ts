@@ -30,20 +30,14 @@ export class LessonStep {
   @Column({ type: 'int' })
   order: number;
 
-  @ManyToOne(
-    () => LessonStepType,
-    (lessonStepType) => lessonStepType.lessonSteps,
-  )
-  type: LessonStepType;
-
   @Column()
   prompt: string;
 
   @Column()
   solution: string;
 
-  @Column()
-  options: string;
+  @Column({ type: 'json' })
+  options: any;
 
   @ManyToOne(
     () => LessonStepType,

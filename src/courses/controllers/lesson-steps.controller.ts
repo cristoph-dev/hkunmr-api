@@ -35,6 +35,8 @@ export class LessonStepsController {
     return this.lessonStepsService.findAll();
   }
 
+  
+
   @Get(':id')
   @AllRoles()
   @ApiOperation({ summary: 'Obtener un paso de lección por ID' })
@@ -46,6 +48,20 @@ export class LessonStepsController {
   @ApiResponse({ status: 404, description: 'Paso de lección no encontrado' })
   findOne(@Param('id') id: string): Promise<LessonStep> {
     return this.lessonStepsService.findOne(+id);
+  }
+
+  @Get('by-lesson/:lessonId')
+  @AllRoles()
+  @ApiOperation({ summary: 'Obtener todos los pasos de una lección' })
+  @ApiResponse({
+    status: 200,
+    description: 'Retorna todos los pasos asociados a una lección',
+    type: [LessonStepResponseDto],
+  })
+  findByLesson(
+    @Param('lessonId') lessonId: string,
+  ): Promise<LessonStep[]> {
+    return this.lessonStepsService.findByLesson(+lessonId);
   }
 
   @Post()
@@ -88,3 +104,4 @@ export class LessonStepsController {
     return this.lessonStepsService.remove(+id);
   }
 }
+

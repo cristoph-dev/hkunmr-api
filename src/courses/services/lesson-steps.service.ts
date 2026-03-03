@@ -13,7 +13,7 @@ export class LessonStepsService {
   async findAll(): Promise<LessonStep[]> {
     return await this.lessonStepRepository.find({
       where: { is_active: true },
-      relations: ['type'],
+      relations: ['lessonStepType'],  
       order: { order: 'ASC' },
     });
   }
@@ -53,4 +53,18 @@ export class LessonStepsService {
     lessonStep.is_active = false;
     await this.lessonStepRepository.save(lessonStep);
   }
+
+  async findByLesson(lessonId: number): Promise<LessonStep[]> {
+    return await this.lessonStepRepository.find({
+      where: {
+        lesson: { id: lessonId },
+        is_active: true,
+      },
+      relations: {
+        lessonStepType: true, 
+      },
+      order: { order: 'ASC' },
+    });
+  }
 }
+

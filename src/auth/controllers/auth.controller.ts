@@ -20,9 +20,13 @@ import {
   RefreshTokenDto,
 } from '../dto';
 import type { AuthenticatedRequest } from 'src/common/lib/types';
+import { User } from 'src/users/entities';
 import { SuccessResponseDto } from '@common/dto';
 import { JwtRefreshGuard } from '../guards/jwt-refresh.guard';
 
+import { Public } from 'src/common/decorators/public.decorator';
+
+@Public()
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
@@ -44,7 +48,7 @@ export class AuthController {
   @ApiResponse({ status: 200, type: LoginResponseDto })
   async login(@Request() req: AuthenticatedRequest): Promise<LoginResponseDto> {
     // req.user viene desde LocalStrategy
-    return await this.authService.login(req.user);
+    return await this.authService.login(req.user as unknown as User);
   }
 
   @UseGuards(JwtRefreshGuard)

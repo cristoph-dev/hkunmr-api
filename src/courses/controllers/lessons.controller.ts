@@ -7,17 +7,24 @@ import {
   Param,
   Delete,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { LessonsService } from '../services/lessons.service';
 import { Lesson } from '../entities/lesson.entity';
 import { LessonResponseDto } from '../dto/response/lesson-response.dto';
-
+import { AllRoles, Teacher } from 'src/common/guards/role.guard';
 @ApiTags('lessons')
+@ApiBearerAuth()
 @Controller('lessons')
 export class LessonsController {
   constructor(private readonly lessonsService: LessonsService) {}
 
   @Get()
+  @AllRoles()
   @ApiOperation({ summary: 'Obtener todas las lecciones' })
   @ApiResponse({
     status: 200,
@@ -29,6 +36,7 @@ export class LessonsController {
   }
 
   @Get(':id')
+  @AllRoles()
   @ApiOperation({ summary: 'Obtener una lección por ID' })
   @ApiResponse({
     status: 200,
@@ -41,6 +49,7 @@ export class LessonsController {
   }
 
   @Post()
+  @Teacher()
   @ApiOperation({ summary: 'Crear una nueva lección' })
   @ApiResponse({
     status: 201,
@@ -52,6 +61,7 @@ export class LessonsController {
   }
 
   @Patch(':id')
+  @Teacher()
   @ApiOperation({ summary: 'Actualizar una lección' })
   @ApiResponse({
     status: 200,
@@ -67,6 +77,7 @@ export class LessonsController {
   }
 
   @Delete(':id')
+  @Teacher()
   @ApiOperation({ summary: 'Eliminar una lección (soft delete)' })
   @ApiResponse({ status: 200, description: 'Lección eliminada exitosamente' })
   @ApiResponse({ status: 404, description: 'Lección no encontrada' })

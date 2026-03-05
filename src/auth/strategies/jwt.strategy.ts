@@ -7,8 +7,8 @@ import { UserPayload } from 'src/common/lib/types';
 
 export interface JwtPayload {
   sub: number;
-  username: string;
   email: string;
+  roles: string[];
 }
 
 @Injectable()
@@ -25,6 +25,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     return {
       id: payload.sub,
       email: payload.email,
+      roles: payload.roles,
     };
   }
 }

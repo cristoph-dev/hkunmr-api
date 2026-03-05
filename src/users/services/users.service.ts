@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, EntityManager, UpdateResult } from 'typeorm';
-import { User } from 'src/users/entities';
+import { Role, User } from '../entities';
 
 @Injectable()
 export class UsersService {
@@ -11,15 +11,23 @@ export class UsersService {
   ) {}
 
   async findByEmail(email: string): Promise<User | null> {
-    return this.userRepository.findOne({
-      where: { email },
-    });
+    return this.userRepository
+      .createQueryBuilder('user')
+      .leftJoinAndSelect('user.roles', 'role', 'role.is_active = :isActive', {
+        isActive: true,
+      })
+      .where('user.email = :email', { email })
+      .getOne();
   }
 
   async findById(id: number): Promise<User | null> {
-    return this.userRepository.findOne({
-      where: { id },
-    });
+    return this.userRepository
+      .createQueryBuilder('user')
+      .leftJoinAndSelect('user.roles', 'role', 'role.is_active = :isActive', {
+        isActive: true,
+      })
+      .where('user.id = :id', { id })
+      .getOne();
   }
 
   async create(data: Partial<User>, manager?: EntityManager): Promise<User> {
@@ -52,17 +60,37 @@ export class UsersService {
     const repository = manager
       ? manager.getRepository(User)
       : this.userRepository;
-    return repository.find({ where: { role: { id: roleId } } });
+    return repository.find({ where: { roles: { id: roleId } } });
   }
 
-  async updateRole(
-    userId: number,
-    roleId: number,
-    manager?: EntityManager,
-  ): Promise<UpdateResult> {
-    const repository = manager
-      ? manager.getRepository(User)
-      : this.userRepository;
-    return repository.update({ id: userId }, { role: { id: roleId } });
+  async assignRole(userId: number, roleId: number): Promise<boolean> {
+    await this.userRepository
+      .createQueryBuilder()
+      .relation(User, 'roles')
+      .of(userId)
+      .add(roleId);
+
+    return true;
+  }
+
+  async revokeRole(userId: number, roleId: number): Promise<boolean> {
+    await this.userRepository
+      .createQueryBuilder()
+      .relation(User, 'roles')
+      .of(userId)
+      .remove(roleId);
+
+    return true;
+  }
+
+  async updateRole(userId: number, roleId: number): Promise<void> {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      relations: { roles: true },
+    });
+    if (user) {
+      user.roles = [{ id: roleId } as Role];
+      await this.userRepository.save(user);
+    }
   }
 }

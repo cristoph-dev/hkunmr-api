@@ -30,8 +30,8 @@ export class Lesson {
   @OneToMany(() => LessonStep, (step) => step.lesson)
   steps: LessonStep[];
 
-  @OneToMany(() => UserLesson, (userLesson) => userLesson.user)
-  users: UserLesson[];
+  @OneToMany(() => UserLesson, (userLesson) => userLesson.lesson)
+  user_lessons: UserLesson[];
 
   @Column({ type: 'int' })
   order: number;

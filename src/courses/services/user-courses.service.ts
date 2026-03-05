@@ -18,7 +18,7 @@ export class UserCoursesService {
     @InjectRepository(Course)
     private readonly courseRepository: Repository<Course>,
     private readonly userLessonsService: UserLessonsService,
-  ) {}
+  ) { }
 
   async isEnrolled(courseId: number, userId: number): Promise<boolean> {
     const enrollment = await this.userCourseRepository.findOne({
@@ -76,7 +76,7 @@ export class UserCoursesService {
     if (course.lessons?.length > 0) {
       await this.userLessonsService.enrollInMultipleLessons(
         course.lessons,
-        userId,
+        savedEnrollment.id
       );
     }
 

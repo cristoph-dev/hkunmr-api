@@ -13,8 +13,12 @@ import { CreateRoleDto } from '../dto/create-role.dto';
 import { Role } from '../entities';
 
 import { UpdateRoleDto } from '../dto/update-role.dto';
+import { Admin } from 'src/common/guards/role.guard';
+import { ApiBearerAuth } from '@nestjs/swagger';
 
-@ApiTags('Roles')
+@ApiTags('roles')
+@ApiBearerAuth()
+@Admin()
 @Controller('roles')
 export class RoleController {
   constructor(private readonly roleService: RoleService) {}

@@ -6,6 +6,9 @@ import { AuthModule } from 'src/auth/auth.module';
 import { MailModule } from './mail/mail.module';
 import { CoursesModule } from './courses/course.module';
 import { ClassroomModule } from './classroom/classroom.module';
+import { APP_GUARD } from '@nestjs/core';
+import { JwtAuthGuard } from 'src/auth/guards/jwt.guard';
+import { RolesGuard } from './common/guards/role.guard';
 
 @Module({
   imports: [
@@ -28,11 +31,21 @@ import { ClassroomModule } from './classroom/classroom.module';
         synchronize: config.get('ENV') === 'development',
       }),
     }),
-    UsersModule,
     AuthModule,
+    UsersModule,
     CoursesModule,
-    MailModule,
     ClassroomModule,
+    MailModule,
+  ],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: RolesGuard,
+    },
   ],
 })
 export class AppModule {}

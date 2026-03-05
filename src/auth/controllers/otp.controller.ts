@@ -3,7 +3,9 @@ import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { OtpService } from '../services/otp.service';
 import { CreateOtpDto } from '../dto';
 import { SuccessResponseDto } from '@common/dto';
+import { Public } from '@common/decorators/public.decorator';
 
+@Public()
 @ApiTags('auth')
 @Controller('otp')
 export class OtpController {

@@ -31,8 +31,8 @@ export class JwtRefreshStrategy extends PassportStrategy(
     }
     return {
       id: payload.sub,
-      username: payload.username,
       email: payload.email,
+      roles: payload.roles,
       refreshToken,
     };
   }

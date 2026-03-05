@@ -2,12 +2,11 @@ import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
-  ManyToOne,
   UpdateDateColumn,
   CreateDateColumn,
   OneToMany,
-  Index,
   ManyToMany,
+  JoinTable,
 } from 'typeorm';
 import { Role } from './role.entity';
 import { UserCourse } from 'src/courses/entities/course-user.entity';
@@ -36,9 +35,9 @@ export class User {
   @Column({ default: false })
   email_verified: boolean;
 
-  @Index()
-  @ManyToOne(() => Role, (role) => role.users)
-  role: Role;
+  @ManyToMany(() => Role, (role) => role.users)
+  @JoinTable({ name: 'users_roles' })
+  roles: Role[];
 
   @OneToMany(() => UserCourse, (userCourse) => userCourse.user)
   courses: UserCourse[];

@@ -2,18 +2,48 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Course } from '../entities/course.entity';
+import { UserCourse } from '../entities/course-user.entity';
 
 @Injectable()
 export class CoursesService {
   constructor(
     @InjectRepository(Course)
     private readonly courseRepository: Repository<Course>,
-  ) {}
+    @InjectRepository(UserCourse)
+    private readonly userCourseRepository: Repository<UserCourse>,
+  ) { }
 
-  async findAll(): Promise<Course[]> {
+  async findAll(cascade?: string): Promise<Course[]> {
+    if (cascade === 'full') {
+      return await this.courseRepository
+        .createQueryBuilder('course')
+        .leftJoinAndSelect('course.lessons', 'lesson')
+        .leftJoinAndSelect('lesson.steps', 'step')
+        .where('course.is_active = :active', { active: true })
+        .orderBy('course.position', 'ASC')
+        .addOrderBy('lesson.order', 'ASC')
+        .addOrderBy('step.order', 'ASC')
+        .getMany();
+    }
+
     return await this.courseRepository.find({
       where: { is_active: true },
-      order: { position: 'ASC' },
+      relations: ['lessons'],
+      order: {
+        position: 'ASC',
+      },
+    });
+  }
+
+  async findByUserId(id: number, cascadeData: boolean = false): Promise<UserCourse[]> {
+    const relations = ['course'];
+    if (Boolean(cascadeData)) {
+      relations.push('user_lessons', 'user_lessons.user_steps', 'user_lessons.lesson');
+    }
+
+    return await this.userCourseRepository.find({
+      where: { user: { id } },
+      relations,
     });
   }
 

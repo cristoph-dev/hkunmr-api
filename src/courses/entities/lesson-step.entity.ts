@@ -30,13 +30,13 @@ export class LessonStep {
   @Column({ type: 'int' })
   order: number;
 
-  @Column()
+  @Column({ type: 'text' })
   prompt: string;
 
-  @Column()
+  @Column({ type: 'text' })
   solution: string;
 
-  @Column()
+  @Column({ type: 'text' })
   options: string;
 
   @ManyToOne(

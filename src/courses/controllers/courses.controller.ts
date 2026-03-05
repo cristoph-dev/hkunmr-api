@@ -17,6 +17,7 @@ import {
 } from '@nestjs/swagger';
 import { CoursesService } from '../services/courses.service';
 import { UserCoursesService } from '../services/user-courses.service';
+import { UserLessonsService } from '../services/user-lessons.service';
 import { Course } from '../entities/course.entity';
 import { CourseResponseDto } from '../dto/response/course-response.dto';
 import { CreateCourseDto } from '../dto/create-course.dto';
@@ -25,6 +26,7 @@ import { AllRoles, Student, Teacher } from 'src/common/guards/role.guard';
 import { AuthenticatedUser } from 'src/common/decorators/authenticated.decorator';
 import type { UserPayload } from 'src/common/lib/types';
 import { UserCourse } from '../entities/course-user.entity';
+import { UserLesson } from '../entities/lesson-user.entity';
 @ApiBearerAuth()
 @ApiTags('courses')
 @Controller('courses')
@@ -32,6 +34,7 @@ export class CoursesController {
   constructor(
     private readonly coursesService: CoursesService,
     private readonly userCoursesService: UserCoursesService,
+    private readonly userLessonsService: UserLessonsService,
   ) { }
 
     @Get()
@@ -148,6 +151,21 @@ async enrollUserByAdmin(
 ): Promise<{ message: string }> {
   await this.userCoursesService.enroll(+courseId, +userId);
   return { message: 'Usuario inscrito exitosamente' };
+}
+
+@Post('lessons/:lessonId/complete')
+@Student()
+@ApiOperation({ summary: 'Completar leccion y desbloquear la siguiente [Estudiantes]' })
+@ApiResponse({
+  status: 200,
+  description: 'Leccion completada y progreso actualizado [Estudiantes]',
+})
+@ApiResponse({ status: 404, description: 'Inscripcion de leccion no encontrada' })
+completeLessonAndAdvance(
+  @Param('lessonId') lessonId: string,
+  @AuthenticatedUser() user: UserPayload,
+): Promise<UserLesson> {
+  return this.userLessonsService.completeLessonAndAdvance(+lessonId, user.id);
 }
 
 }

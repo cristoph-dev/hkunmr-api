@@ -3,6 +3,16 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Course } from '../entities/course.entity';
 import { UserCourse } from '../entities/course-user.entity';
+import { ProgressEnum } from 'src/common/lib/const';
+
+interface UserCourseCatalogItem {
+  course: Course;
+  is_enrolled: boolean;
+  is_unlocked: boolean;
+  progress: ProgressEnum | null;
+  enrollment_id: number | null;
+  user_lessons?: UserCourse['user_lessons'];
+}
 
 @Injectable()
 export class CoursesService {
@@ -44,6 +54,45 @@ export class CoursesService {
     return await this.userCourseRepository.find({
       where: { user: { id } },
       relations,
+    });
+  }
+
+  async findCatalogByUserId(
+    userId: number,
+    cascadeData: boolean = false,
+  ): Promise<UserCourseCatalogItem[]> {
+    const courses = await this.findAll(cascadeData ? 'full' : undefined);
+
+    const enrollmentRelations = ['course'];
+    if (cascadeData) {
+      enrollmentRelations.push(
+        'user_lessons',
+        'user_lessons.user_steps',
+        'user_lessons.lesson',
+      );
+    }
+
+    const enrollments = await this.userCourseRepository.find({
+      where: { user: { id: userId } },
+      relations: enrollmentRelations,
+    });
+
+    const enrollmentByCourseId = new Map<number, UserCourse>(
+      enrollments.map((enrollment) => [enrollment.course.id, enrollment]),
+    );
+
+    return courses.map((course) => {
+      const enrollment = enrollmentByCourseId.get(course.id);
+      const isEnrolled = Boolean(enrollment);
+
+      return {
+        course,
+        is_enrolled: isEnrolled,
+        is_unlocked: course.position === 1 || isEnrolled,
+        progress: enrollment?.progress ?? null,
+        enrollment_id: enrollment?.id ?? null,
+        ...(cascadeData ? { user_lessons: enrollment?.user_lessons ?? [] } : {}),
+      };
     });
   }
 

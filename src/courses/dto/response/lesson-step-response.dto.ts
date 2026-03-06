@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class LessonStepResponseDto {
   @ApiProperty({ example: 1, description: 'ID del paso' })
@@ -33,6 +33,18 @@ export class LessonStepResponseDto {
     description: 'Opciones de respuesta en formato JSON',
   })
   options: string;
+
+  @ApiPropertyOptional({
+    example: '/public/lesson-steps/1717474000-abc123.gif',
+    description: 'URL relativa del recurso visual (imagen o gif)',
+  })
+  media_url?: string | null;
+
+  @ApiPropertyOptional({
+    example: 'gif',
+    description: 'Tipo de recurso visual asociado al paso',
+  })
+  media_type?: 'image' | 'gif' | null;
 
   @ApiProperty({ example: true, description: 'Estado activo del paso' })
   is_active: boolean;

@@ -39,6 +39,12 @@ export class LessonStep {
   @Column({ type: 'text' })
   options: string;
 
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  media_url: string | null;
+
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  media_type: 'image' | 'gif' | null;
+
   @ManyToOne(
     () => LessonStepType,
     (lessonStepType) => lessonStepType.lessonSteps,

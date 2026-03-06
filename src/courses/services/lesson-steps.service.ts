@@ -21,7 +21,7 @@ export class LessonStepsService {
   async findOne(id: number): Promise<LessonStep> {
     const lessonStep = await this.lessonStepRepository.findOne({
       where: { id, is_active: true },
-      relations: ['lesson', 'type'],
+      relations: ['lesson', 'lessonStepType'],
     });
 
     if (!lessonStep) {
@@ -65,6 +65,17 @@ export class LessonStepsService {
       },
       order: { order: 'ASC' },
     });
+  }
+
+  async updateMedia(
+    id: number,
+    mediaUrl: string | null,
+    mediaType: 'image' | 'gif' | null,
+  ): Promise<LessonStep> {
+    const lessonStep = await this.findOne(id);
+    lessonStep.media_url = mediaUrl;
+    lessonStep.media_type = mediaType;
+    return await this.lessonStepRepository.save(lessonStep);
   }
 }
 

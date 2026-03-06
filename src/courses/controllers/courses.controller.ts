@@ -27,6 +27,16 @@ import { AuthenticatedUser } from 'src/common/decorators/authenticated.decorator
 import type { UserPayload } from 'src/common/lib/types';
 import { UserCourse } from '../entities/course-user.entity';
 import { UserLesson } from '../entities/lesson-user.entity';
+import { ProgressEnum } from 'src/common/lib/const';
+
+interface UserCourseCatalogResponse {
+  course: Course;
+  is_enrolled: boolean;
+  is_unlocked: boolean;
+  progress: ProgressEnum | null;
+  enrollment_id: number | null;
+  user_lessons?: UserCourse['user_lessons'];
+}
 @ApiBearerAuth()
 @ApiTags('courses')
 @Controller('courses')
@@ -119,10 +129,13 @@ export class CoursesController {
   @ApiOperation({ summary: 'Obtener todos los cursos del usuario' })
   @ApiResponse({
     status: 200,
-    description: 'Retorna todos los cursos del usuario',
+    description: 'Retorna catalogo de cursos (inscrito o no) [Estudiantes]',
   })
-  findByUser(@AuthenticatedUser() user: UserPayload, @Query('cascade') cascade?: boolean): Promise<UserCourse[]> {
-    return this.coursesService.findByUserId(user.id, cascade);
+  findByUser(
+    @AuthenticatedUser() user: UserPayload,
+    @Query('cascade') cascade?: boolean,
+  ): Promise<UserCourseCatalogResponse[]> {
+    return this.coursesService.findCatalogByUserId(user.id, cascade);
   }
 
   @Post(':id/enroll')

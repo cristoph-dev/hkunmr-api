@@ -9,6 +9,7 @@ import {
   UploadedFile,
   UseInterceptors,
   BadRequestException,
+  Query,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -17,6 +18,7 @@ import {
   ApiBearerAuth,
   ApiConsumes,
   ApiBody,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
@@ -25,6 +27,9 @@ import { existsSync, mkdirSync } from 'fs';
 import { LessonStepsService } from '../services/lesson-steps.service';
 import { LessonStep } from '../entities/lesson-step.entity';
 import { LessonStepResponseDto } from '../dto/response/lesson-step-response.dto';
+import { AdminLessonStepManagementResponseDto } from '../dto/response/admin-lesson-step-management-response.dto';
+import { CreateLessonStepDto } from '../dto/create-lesson-step.dto';
+import { UpdateLessonStepDto } from '../dto/update-lesson-step.dto';
 import { AllRoles, Teacher } from 'src/common/guards/role.guard';
 @ApiTags('lesson-steps')
 @ApiBearerAuth()
@@ -44,7 +49,78 @@ export class LessonStepsController {
     return this.lessonStepsService.findAll();
   }
 
-  
+  @Get('admin/management')
+  @Teacher()
+  @ApiQuery({
+    name: 'q',
+    required: false,
+    type: String,
+    description: 'Busqueda por step, leccion o curso',
+  })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    type: Number,
+    description: 'Pagina (default 1)',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number,
+    description: 'Limite por pagina (default 20, max 100)',
+  })
+  @ApiQuery({
+    name: 'is_active',
+    required: false,
+    type: Boolean,
+    description: 'Filtrar por estado activo del step',
+  })
+  @ApiQuery({
+    name: 'lesson_id',
+    required: false,
+    type: Number,
+    description: 'Filtrar por leccion',
+  })
+  @ApiQuery({
+    name: 'course_id',
+    required: false,
+    type: Number,
+    description: 'Filtrar por curso',
+  })
+  @ApiQuery({
+    name: 'step_type_code',
+    required: false,
+    type: String,
+    description: 'Filtrar por tipo de step (THEORY, SINGLE_CHOICE, etc.)',
+  })
+  @ApiOperation({ summary: 'Listar steps para gestion [Admin/profesor]' })
+  @ApiResponse({
+    status: 200,
+    description: 'Listado paginado de steps con su leccion y curso',
+    type: AdminLessonStepManagementResponseDto,
+  })
+  findAdminManagement(
+    @Query('q') q?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('is_active') isActive?: string,
+    @Query('lesson_id') lessonId?: string,
+    @Query('course_id') courseId?: string,
+    @Query('step_type_code') stepTypeCode?: string,
+  ): Promise<AdminLessonStepManagementResponseDto> {
+    const parsedIsActive =
+      typeof isActive === 'string' ? isActive.toLowerCase() === 'true' : undefined;
+
+    return this.lessonStepsService.getAdminLessonStepsManagement(
+      q,
+      Number(page),
+      Number(limit),
+      parsedIsActive,
+      Number(lessonId),
+      Number(courseId),
+      stepTypeCode,
+    );
+  }
 
   @Get(':id')
   @AllRoles()
@@ -75,19 +151,19 @@ export class LessonStepsController {
 
   @Post()
   @Teacher()
-  @ApiOperation({ summary: 'Crear un nuevo paso de lección' })
+  @ApiOperation({ summary: 'Crear un nuevo paso de lección [Admin/profesor]' })
   @ApiResponse({
     status: 201,
     description: 'Paso de lección creado exitosamente',
     type: LessonStepResponseDto,
   })
-  create(@Body() lessonStepData: Partial<LessonStep>): Promise<LessonStep> {
+  create(@Body() lessonStepData: CreateLessonStepDto): Promise<LessonStep> {
     return this.lessonStepsService.create(lessonStepData);
   }
 
   @Patch(':id')
   @Teacher()
-  @ApiOperation({ summary: 'Actualizar un paso de lección' })
+  @ApiOperation({ summary: 'Actualizar un paso de lección [Admin/profesor]' })
   @ApiResponse({
     status: 200,
     description: 'Paso de lección actualizado exitosamente',
@@ -96,14 +172,14 @@ export class LessonStepsController {
   @ApiResponse({ status: 404, description: 'Paso de lección no encontrado' })
   update(
     @Param('id') id: string,
-    @Body() lessonStepData: Partial<LessonStep>,
+    @Body() lessonStepData: UpdateLessonStepDto,
   ): Promise<LessonStep> {
     return this.lessonStepsService.update(+id, lessonStepData);
   }
 
   @Delete(':id')
   @Teacher()
-  @ApiOperation({ summary: 'Eliminar un paso de lección (soft delete)' })
+  @ApiOperation({ summary: 'Eliminar un paso de lección (soft delete) [Admin/profesor]' })
   @ApiResponse({
     status: 200,
     description: 'Paso de lección eliminado exitosamente',
@@ -165,7 +241,7 @@ export class LessonStepsController {
       required: ['file'],
     },
   })
-  @ApiOperation({ summary: 'Subir imagen o gif para un paso de lección' })
+  @ApiOperation({ summary: 'Subir imagen o gif para un paso de lección [Admin/profesor]' })
   @ApiResponse({
     status: 201,
     description: 'Media de paso de lección actualizada exitosamente',
@@ -192,4 +268,5 @@ export class LessonStepsController {
     );
   }
 }
+
 

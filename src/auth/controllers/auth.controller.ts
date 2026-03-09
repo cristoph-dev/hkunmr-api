@@ -6,8 +6,15 @@ import {
   Body,
   HttpStatus,
   HttpCode,
+  Get,
 } from '@nestjs/common';
-import { ApiOperation, ApiBody, ApiTags, ApiResponse } from '@nestjs/swagger';
+import {
+  ApiOperation,
+  ApiBody,
+  ApiTags,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 
 import { AuthService } from '../services/auth.service';
 import { LocalAuthGuard } from '../guards/local-auth.guard';
@@ -18,20 +25,22 @@ import {
   ResetPasswordDto,
   LoginResponseDto,
   RefreshTokenDto,
+  MeResponseDto,
 } from '../dto';
-import type { AuthenticatedRequest } from 'src/common/lib/types';
+import type { AuthenticatedRequest, UserPayload } from 'src/common/lib/types';
 import { User } from 'src/users/entities';
 import { SuccessResponseDto } from '@common/dto';
 import { JwtRefreshGuard } from '../guards/jwt-refresh.guard';
 
 import { Public } from 'src/common/decorators/public.decorator';
+import { AuthenticatedUser } from 'src/common/decorators/authenticated.decorator';
 
-@Public()
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  @Public()
   @UseGuards(LocalAuthGuard)
   @Post('login')
   @ApiOperation({ summary: 'Iniciar sesión con credenciales de usuario' })
@@ -40,8 +49,8 @@ export class AuthController {
     schema: {
       type: 'object',
       properties: {
-        username: { type: 'string', example: 'usuario/correo' },
-        password: { type: 'string', example: 'contrasenia123' },
+        username: { type: 'string', example: 'admin@hkunmr.com' },
+        password: { type: 'string', example: 'Admin1!' },
       },
     },
   })
@@ -51,6 +60,7 @@ export class AuthController {
     return await this.authService.login(req.user as unknown as User);
   }
 
+  @Public()
   @UseGuards(JwtRefreshGuard)
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
@@ -66,6 +76,7 @@ export class AuthController {
     );
   }
 
+  @Public()
   @Post('register')
   @ApiOperation({ summary: 'Registrar un nuevo usuario' })
   @ApiResponse({
@@ -84,6 +95,7 @@ export class AuthController {
     return this.authService.register(name, lastname, email, password);
   }
 
+  @Public()
   @Post('verify')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Verificar un código OTP' })
@@ -108,6 +120,7 @@ export class AuthController {
     };
   }
 
+  @Public()
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Olvidar contraseña' })
@@ -132,6 +145,7 @@ export class AuthController {
     };
   }
 
+  @Public()
   @Post('reset-password')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Restablecer contraseña' })
@@ -155,5 +169,13 @@ export class AuthController {
       message: 'Ok',
       success: isValid,
     };
+  }
+
+  @Get('me')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Obtener perfil del usuario autenticado' })
+  @ApiResponse({ status: 200, type: MeResponseDto })
+  getMe(@AuthenticatedUser() user: UserPayload): Promise<MeResponseDto> {
+    return this.authService.getMe(user.id);
   }
 }

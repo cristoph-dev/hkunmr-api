@@ -39,6 +39,9 @@ export class LessonStep {
   @Column({ type: 'text' })
   options: string;
 
+  @Column({ type: 'text', nullable: true })
+  responses: string | null;
+
   @Column({ type: 'varchar', length: 500, nullable: true })
   media_url: string | null;
 

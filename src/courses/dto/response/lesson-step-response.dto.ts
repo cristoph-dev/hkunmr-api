@@ -35,6 +35,12 @@ export class LessonStepResponseDto {
   options: string;
 
   @ApiPropertyOptional({
+    example: 'Es verdadero porque cumple la definicion tecnica del concepto evaluado.',
+    description: 'Explicacion o retroalimentacion de la respuesta correcta',
+  })
+  responses?: string | null;
+
+  @ApiPropertyOptional({
     example: '/public/lesson-steps/1717474000-abc123.gif',
     description: 'URL relativa del recurso visual (imagen o gif)',
   })

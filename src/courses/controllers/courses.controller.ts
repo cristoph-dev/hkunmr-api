@@ -22,12 +22,14 @@ import { Course } from '../entities/course.entity';
 import { CourseResponseDto } from '../dto/response/course-response.dto';
 import { CreateCourseDto } from '../dto/create-course.dto';
 import { UpdateCourseDto } from '../dto/update-course.dto';
-import { AllRoles, Student, Teacher } from 'src/common/guards/role.guard';
+import { Admin, AllRoles, Student, Teacher } from 'src/common/guards/role.guard';
 import { AuthenticatedUser } from 'src/common/decorators/authenticated.decorator';
 import type { UserPayload } from 'src/common/lib/types';
 import { UserCourse } from '../entities/course-user.entity';
 import { UserLesson } from '../entities/lesson-user.entity';
 import { ProgressEnum } from 'src/common/lib/const';
+import { AdminDashboardResponseDto } from '../dto/response/admin-dashboard-response.dto';
+import { AdminCourseManagementResponseDto } from '../dto/response/admin-course-management-response.dto';
 
 interface UserCourseCatalogResponse {
   course: Course;
@@ -166,7 +168,7 @@ async enrollUserByAdmin(
   return { message: 'Usuario inscrito exitosamente' };
 }
 
-@Post('lessons/:lessonId/complete')
+  @Post('lessons/:lessonId/complete')
 @Student()
 @ApiOperation({ summary: 'Completar leccion y desbloquear la siguiente [Estudiantes]' })
 @ApiResponse({
@@ -179,6 +181,67 @@ completeLessonAndAdvance(
   @AuthenticatedUser() user: UserPayload,
 ): Promise<UserLesson> {
   return this.userLessonsService.completeLessonAndAdvance(+lessonId, user.id);
+}
+
+@Get('admin/dashboard-summary')
+@Admin()
+@ApiOperation({ summary: 'Obtener resumen del dashboard [Admin]' })
+@ApiResponse({
+  status: 200,
+  description: 'Resumen de métricas para el dashboard administrativo',
+  type: AdminDashboardResponseDto,
+})
+getAdminDashboardSummary(): Promise<AdminDashboardResponseDto> {
+  return this.coursesService.getAdminDashboardSummary();
+}
+
+@Get('admin/management')
+@Admin()
+@ApiQuery({
+  name: 'q',
+  required: false,
+  type: String,
+  description: 'Busqueda por titulo de curso',
+})
+@ApiQuery({
+  name: 'page',
+  required: false,
+  type: Number,
+  description: 'Pagina (default 1)',
+})
+@ApiQuery({
+  name: 'limit',
+  required: false,
+  type: Number,
+  description: 'Limite por pagina (default 20, max 100)',
+})
+@ApiQuery({
+  name: 'is_active',
+  required: false,
+  type: Boolean,
+  description: 'Filtrar por estado activo del curso',
+})
+@ApiOperation({ summary: 'Listar cursos para gestion [Admin]' })
+@ApiResponse({
+  status: 200,
+  description: 'Listado paginado para administracion de cursos',
+  type: AdminCourseManagementResponseDto,
+})
+getAdminCoursesManagement(
+  @Query('q') q?: string,
+  @Query('page') page?: string,
+  @Query('limit') limit?: string,
+  @Query('is_active') isActive?: string,
+): Promise<AdminCourseManagementResponseDto> {
+  const parsedIsActive =
+    typeof isActive === 'string' ? isActive.toLowerCase() === 'true' : undefined;
+
+  return this.coursesService.getAdminCoursesManagement(
+    q,
+    Number(page),
+    Number(limit),
+    parsedIsActive,
+  );
 }
 
 }

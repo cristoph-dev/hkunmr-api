@@ -12,6 +12,7 @@ import * as bcrypt from 'bcrypt';
 import { UserPayload } from 'src/common/lib/types';
 import { Role, User } from 'src/users/entities';
 import { LoginResponseDto } from '../dto/login-response.dto';
+import { MeResponseDto } from '../dto/me-response.dto';
 import { ConfigService } from '@nestjs/config';
 import { EmailDomain } from 'src/common/lib/const';
 import {
@@ -381,5 +382,21 @@ export class AuthService {
       email: user.email,
       roles: user.roles.map((r) => r.description),
     });
+  }
+
+  async getMe(userId: number): Promise<MeResponseDto> {
+    const user = await this.usersService.findById(userId);
+
+    if (!user || user.is_active === false) {
+      throw new UnauthorizedException();
+    }
+
+    const primaryRole = user.roles?.[0]?.description ?? '';
+
+    return {
+      name: user.name,
+      lastname: user.lastname,
+      role: primaryRole,
+    };
   }
 }

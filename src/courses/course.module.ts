@@ -15,6 +15,8 @@ import { LessonStepsService } from './services/lesson-steps.service';
 import { UserCoursesService } from './services/user-courses.service';
 import { UserLessonsService } from './services/user-lessons.service';
 import { UserStep } from './entities/lesson-step-user.entity';
+import { User, Role } from 'src/users/entities';
+import { Classroom } from 'src/classroom/entities/classroom.entity';
 
 @Module({
   imports: [
@@ -26,6 +28,9 @@ import { UserStep } from './entities/lesson-step-user.entity';
       UserCourse,
       UserLesson,
       UserStep,
+      User,
+      Role,
+      Classroom,
     ]),
   ],
   controllers: [CoursesController, LessonsController, LessonStepsController],

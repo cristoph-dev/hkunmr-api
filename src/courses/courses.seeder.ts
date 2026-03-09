@@ -259,7 +259,7 @@ class CoursesSeeder {
           description: 'Completar concepto clave',
           typeCode: 'THEORY_COMPLETE',
           prompt:
-            'Cuando una ________ explota una ________, se genera un ________.',
+            'Cuando una {{gap1}} explota una {{gap2}}, se genera un {{gap3}}.',
           solution: JSON.stringify([
             'Amenaza',
             'Vulnerabilidad',
@@ -392,7 +392,7 @@ Un hacker etico trabaja con permiso explicito y dentro de un alcance definido.`,
           description: 'Completar concepto clave',
           typeCode: 'THEORY_COMPLETE',
           prompt:
-            'El hacking etico busca ________ vulnerabilidades para ________ riesgos.',
+            'El hacking etico busca {{gap1}} vulnerabilidades para {{gap2}} riesgos.',
           solution: JSON.stringify([
             'identificar',
             'reducir',
@@ -502,7 +502,7 @@ Ejemplos:
           description: 'Completar componentes de CIA',
           typeCode: 'THEORY_COMPLETE',
           prompt:
-            'CIA significa ________, ________ y ________.',
+            'CIA significa {{gap1}}, {{gap2}} y {{gap3}}.',
           solution: JSON.stringify([
             'Confidencialidad',
             'Integridad',
@@ -578,7 +578,7 @@ cd ~: vuelve al home del usuario.`,
             description: 'Completar conceptos de rutas',
             typeCode: 'THEORY_COMPLETE',
             prompt:
-              'El directorio raiz de Linux se llama __. El directorio personal de cada usuario esta en __/nombre. Para volver al home desde cualquier lugar usas cd __.',
+              'El directorio raiz de Linux se llama {{gap1}}. El directorio personal de cada usuario esta en {{gap2}}/nombre. Para volver al home desde cualquier lugar usas cd {{gap3}}.',
             solution: JSON.stringify([
               '/',
               '/home',

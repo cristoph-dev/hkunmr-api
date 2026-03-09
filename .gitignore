@@ -3,6 +3,7 @@
 /node_modules
 /build
 /migrations
+public/lesson-steps/
 # Logs
 logs
 *.log

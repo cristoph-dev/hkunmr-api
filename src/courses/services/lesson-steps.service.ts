@@ -237,9 +237,9 @@ export class LessonStepsService {
     });
   }
 
-  async findOne(id: number): Promise<LessonStep> {
+  async findOne(id: number, includeInactive = false): Promise<LessonStep> {
     const lessonStep = await this.lessonStepRepository.findOne({
-      where: { id, is_active: true },
+      where: includeInactive ? { id } : { id, is_active: true },
       relations: ['lesson', 'lessonStepType'],
     });
 

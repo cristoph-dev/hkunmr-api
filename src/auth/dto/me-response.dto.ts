@@ -9,4 +9,10 @@ export class MeResponseDto {
 
   @ApiProperty({ example: 'Administrador', description: 'Rol principal del usuario' })
   role: string;
+
+  @ApiProperty({
+    example: 57,
+    description: 'Puntos acumulados del usuario (suma de medallas ganadas)',
+  })
+  points: number;
 }

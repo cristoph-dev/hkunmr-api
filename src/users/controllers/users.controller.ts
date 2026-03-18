@@ -17,7 +17,7 @@ import {
   ApiResponse,
   ApiQuery,
 } from '@nestjs/swagger';
-import { Admin, AllRoles } from 'src/common/guards/role.guard';
+import { Admin, AllRoles, Teacher } from 'src/common/guards/role.guard';
 import { SuccessResponseDto } from 'src/common/dto';
 import { UpdateMyProfileDto } from '../dto/update-my-profile.dto';
 import { UpdateUserAdminDto } from '../dto/update-user-admin.dto';
@@ -46,6 +46,7 @@ export class UsersController {
   }
 
   @Patch(':id')
+  @Teacher()
   @ApiOperation({ summary: 'Actualizar usuario (name/lastname/is_active) [Admin]' })
   @ApiResponse({
     status: 200,
@@ -81,6 +82,7 @@ export class UsersController {
   }
 
   @Get('admin/students-candidates')
+  @Teacher()
   @ApiOperation({ summary: 'Listar estudiantes candidatos a profesor [Admin]' })
   @ApiQuery({
     name: 'q',
@@ -127,6 +129,7 @@ export class UsersController {
   }
 
   @Get('admin/students')
+  @Teacher()
   @ApiOperation({ summary: 'Listar estudiantes para gestión [Admin]' })
   @ApiQuery({
     name: 'q',
@@ -229,6 +232,7 @@ export class UsersController {
   @ApiOperation({ summary: 'Eliminar usuario (soft delete) [Admin]' })
   @ApiResponse({ status: 200, type: SuccessResponseDto })
   @Delete(':id')
+  @Teacher()
   async deleteUser(
     @Param('id', ParseIntPipe) id: number,
   ): Promise<SuccessResponseDto> {

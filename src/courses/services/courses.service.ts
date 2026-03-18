@@ -78,6 +78,7 @@ export class CoursesService {
   async findCatalogByUserId(
     userId: number,
     cascadeData: boolean = false,
+    userRoles: string[] = [],
   ): Promise<UserCourseCatalogItem[]> {
     const courses = await this.findAll(cascadeData ? 'full' : undefined);
 
@@ -98,6 +99,8 @@ export class CoursesService {
     const enrollmentByCourseId = new Map<number, UserCourse>(
       enrollments.map((enrollment) => [enrollment.course.id, enrollment]),
     );
+    const isTeacherOrAdmin =
+      userRoles.includes(AuthRole.Teacher) || userRoles.includes(AuthRole.Admins);
 
     return courses.map((course) => {
       const enrollment = enrollmentByCourseId.get(course.id);
@@ -106,7 +109,7 @@ export class CoursesService {
       return {
         course,
         is_enrolled: isEnrolled,
-        is_unlocked: course.position === 1 || isEnrolled,
+        is_unlocked: isTeacherOrAdmin || course.position === 1 || isEnrolled,
         progress: enrollment?.progress ?? null,
         enrollment_id: enrollment?.id ?? null,
         ...(cascadeData ? { user_lessons: enrollment?.user_lessons ?? [] } : {}),

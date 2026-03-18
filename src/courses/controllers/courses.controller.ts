@@ -22,7 +22,7 @@ import { Course } from '../entities/course.entity';
 import { CourseResponseDto } from '../dto/response/course-response.dto';
 import { CreateCourseDto } from '../dto/create-course.dto';
 import { UpdateCourseDto } from '../dto/update-course.dto';
-import { Admin, AllRoles, Student, Teacher } from 'src/common/guards/role.guard';
+import { AllRoles, Student, Teacher } from 'src/common/guards/role.guard';
 import { AuthenticatedUser } from 'src/common/decorators/authenticated.decorator';
 import type { UserPayload } from 'src/common/lib/types';
 import { UserCourse } from '../entities/course-user.entity';
@@ -30,6 +30,7 @@ import { UserLesson } from '../entities/lesson-user.entity';
 import { ProgressEnum } from 'src/common/lib/const';
 import { AdminDashboardResponseDto } from '../dto/response/admin-dashboard-response.dto';
 import { AdminCourseManagementResponseDto } from '../dto/response/admin-course-management-response.dto';
+import { SubmitStepAnswerDto } from '../dto/submit-step-answer.dto';
 
 interface UserCourseCatalogResponse {
   course: Course;
@@ -122,6 +123,7 @@ export class CoursesController {
   }
 
   @Get('user/enroll')
+  @AllRoles()
   @ApiQuery({
     name: 'cascade',
     required: false,
@@ -137,7 +139,7 @@ export class CoursesController {
     @AuthenticatedUser() user: UserPayload,
     @Query('cascade') cascade?: boolean,
   ): Promise<UserCourseCatalogResponse[]> {
-    return this.coursesService.findCatalogByUserId(user.id, cascade);
+    return this.coursesService.findCatalogByUserId(user.id, cascade, user.roles);
   }
 
   @Post(':id/enroll')
@@ -154,6 +156,20 @@ export class CoursesController {
     return { message: 'Inscripción exitosa' };
   }
 
+@Post('enroll/:id')
+@Student()
+@ApiOperation({ summary: 'Inscribirse en un curso (ruta alternativa)' })
+@ApiResponse({ status: 201, description: 'Inscripción exitosa' })
+@ApiResponse({ status: 404, description: 'Curso no encontrado' })
+@ApiResponse({ status: 400, description: 'Ya está inscrito en este curso' })
+async enrollAlias(
+  @Param('id') courseId: string,
+  @AuthenticatedUser() user: UserPayload,
+): Promise<{ message: string }> {
+  await this.userCoursesService.enroll(+courseId, user.id);
+  return { message: 'Inscripción exitosa' };
+}
+
 @Post(':courseId/users/:userId')
 @Teacher() 
 @ApiOperation({ summary: 'Inscribir un usuario en un curso [Profesor/admin]'})
@@ -169,11 +185,11 @@ async enrollUserByAdmin(
 }
 
   @Post('lessons/:lessonId/complete')
-@Student()
-@ApiOperation({ summary: 'Completar leccion y desbloquear la siguiente [Estudiantes]' })
+@AllRoles()
+@ApiOperation({ summary: 'Completar leccion y desbloquear la siguiente [Todos los roles]' })
 @ApiResponse({
   status: 200,
-  description: 'Leccion completada y progreso actualizado [Estudiantes]',
+  description: 'Leccion completada y progreso actualizado',
 })
 @ApiResponse({ status: 404, description: 'Inscripcion de leccion no encontrada' })
 completeLessonAndAdvance(
@@ -183,8 +199,37 @@ completeLessonAndAdvance(
   return this.userLessonsService.completeLessonAndAdvance(+lessonId, user.id);
 }
 
+@Post('lessons/:lessonId/steps/:stepId/answer')
+@AllRoles()
+@ApiOperation({ summary: 'Responder un step de leccion y ganar medallas [Todos los roles]' })
+@ApiResponse({
+  status: 200,
+  description: 'Resultado de la respuesta del step y medallas obtenidas',
+})
+submitStepAnswer(
+  @Param('lessonId') lessonId: string,
+  @Param('stepId') stepId: string,
+  @AuthenticatedUser() user: UserPayload,
+  @Body() payload: SubmitStepAnswerDto,
+): Promise<{
+  lesson_id: number;
+  step_id: number;
+  is_correct: boolean;
+  is_answered: boolean;
+  attempts_count: number;
+  medals_earned: number;
+  lesson_progress: ProgressEnum;
+}> {
+  return this.userLessonsService.submitStepAnswer(
+    +lessonId,
+    +stepId,
+    user.id,
+    payload,
+  );
+}
+
 @Get('admin/dashboard-summary')
-@Admin()
+@Teacher()
 @ApiOperation({ summary: 'Obtener resumen del dashboard [Admin]' })
 @ApiResponse({
   status: 200,
@@ -196,7 +241,7 @@ getAdminDashboardSummary(): Promise<AdminDashboardResponseDto> {
 }
 
 @Get('admin/management')
-@Admin()
+@Teacher()
 @ApiQuery({
   name: 'q',
   required: false,
@@ -221,7 +266,7 @@ getAdminDashboardSummary(): Promise<AdminDashboardResponseDto> {
   type: Boolean,
   description: 'Filtrar por estado activo del curso',
 })
-@ApiOperation({ summary: 'Listar cursos para gestion [Admin]' })
+@ApiOperation({ summary: 'Listar cursos para gestion [Admin/Profesor]' })
 @ApiResponse({
   status: 200,
   description: 'Listado paginado para administracion de cursos',

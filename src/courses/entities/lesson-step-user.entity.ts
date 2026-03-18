@@ -43,13 +43,25 @@ export class UserStep {
         type: 'varchar',
         nullable: true,
     })
-    answer: string;
+    answer: string | null;
 
     @Column({
         type: 'boolean',
         default: false,
     })
     is_answered: boolean;
+
+    @Column({
+        type: 'int',
+        default: 0,
+    })
+    attempts_count: number;
+
+    @Column({
+        type: 'int',
+        default: 0,
+    })
+    medals_earned: number;
 
     @CreateDateColumn()
     started_at: Date;

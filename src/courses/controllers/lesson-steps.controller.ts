@@ -123,7 +123,7 @@ export class LessonStepsController {
   }
 
   @Get(':id')
-  @AllRoles()
+  @Teacher()
   @ApiOperation({ summary: 'Obtener un paso de lección por ID' })
   @ApiResponse({
     status: 200,
@@ -132,7 +132,7 @@ export class LessonStepsController {
   })
   @ApiResponse({ status: 404, description: 'Paso de lección no encontrado' })
   findOne(@Param('id') id: string): Promise<LessonStep> {
-    return this.lessonStepsService.findOne(+id);
+    return this.lessonStepsService.findOne(+id, true);
   }
 
   @Get('by-lesson/:lessonId')

@@ -6,6 +6,8 @@ import {
   UpdateDateColumn,
   ManyToMany,
   ManyToOne,
+  JoinTable,
+  JoinColumn,
 } from 'typeorm';
 import { User } from 'src/users/entities';
 import { Course } from 'src/courses/entities/course.entity';
@@ -18,16 +20,27 @@ export class Classroom {
   @Column()
   name: string;
 
-  @Column()
+  @Column({ unique: true })
   code: string;
 
   @ManyToMany(() => User, (user) => user.classrooms)
+  @JoinTable({
+    name: 'classroom_students',
+    joinColumn: { name: 'classroom_id', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'student_id', referencedColumnName: 'id' },
+  })
   students: User[];
 
   @ManyToOne(() => User)
+  @JoinColumn({ name: 'teacher_id' })
   teacher: User;
 
   @ManyToMany(() => Course, (course) => course.classrooms)
+  @JoinTable({
+    name: 'classroom_courses',
+    joinColumn: { name: 'classroom_id', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'course_id', referencedColumnName: 'id' },
+  })
   courses: Course[];
 
   @Column()

@@ -42,7 +42,7 @@ export class LessonsController {
   }
 
   @Get('admin/management')
-  @Admin()
+  @Teacher()
   @ApiQuery({
     name: 'q',
     required: false,
@@ -73,7 +73,7 @@ export class LessonsController {
     type: Number,
     description: 'Filtrar por curso',
   })
-  @ApiOperation({ summary: 'Listar lecciones para gestion [Admin]' })
+  @ApiOperation({ summary: 'Listar lecciones para gestion [Admin/Profesor]' })
   @ApiResponse({
     status: 200,
     description: 'Listado paginado para administracion de lecciones',

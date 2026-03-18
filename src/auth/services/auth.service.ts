@@ -27,6 +27,7 @@ import { Course } from 'src/courses/entities/course.entity';
 import { UserCourse } from 'src/courses/entities/course-user.entity';
 import { Lesson } from 'src/courses/entities/lesson.entity';
 import { UserLesson } from 'src/courses/entities/lesson-user.entity';
+import { UserStep } from 'src/courses/entities/lesson-step-user.entity';
 import { ProgressEnum } from 'src/common/lib/const';
 
 @Injectable()
@@ -392,11 +393,23 @@ export class AuthService {
     }
 
     const primaryRole = user.roles?.[0]?.description ?? '';
+    const pointsRow = await this.dataSource
+      .getRepository(UserStep)
+      .createQueryBuilder('userStep')
+      .innerJoin('userStep.user_lesson', 'userLesson')
+      .innerJoin('userLesson.course_user', 'userCourse')
+      .innerJoin('userCourse.user', 'user')
+      .where('user.id = :userId', { userId })
+      .select('COALESCE(SUM(userStep.medals_earned), 0)', 'points')
+      .getRawOne<{ points: string | number }>();
+
+    const points = Number(pointsRow?.points ?? 0);
 
     return {
       name: user.name,
       lastname: user.lastname,
       role: primaryRole,
+      points,
     };
   }
 }

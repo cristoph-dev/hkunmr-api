@@ -49,10 +49,8 @@ export class UserCoursesService {
         where: {
           id: courseId,
           is_active: true,
-          lessons: { is_active: true },
         },
         relations: ['lessons'],
-        order: { lessons: { order: 'ASC' } },
       }),
       this.isEnrolled(courseId, userId),
     ]);
@@ -73,9 +71,13 @@ export class UserCoursesService {
 
     const savedEnrollment = await this.userCourseRepository.save(enrollment);
 
-    if (course.lessons?.length > 0) {
+    const activeLessons = (course.lessons ?? [])
+      .filter((lesson) => lesson.is_active)
+      .sort((a, b) => a.order - b.order);
+
+    if (activeLessons.length > 0) {
       await this.userLessonsService.enrollInMultipleLessons(
-        course.lessons,
+        activeLessons,
         savedEnrollment.id
       );
     }

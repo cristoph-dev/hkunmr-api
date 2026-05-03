@@ -31,9 +31,9 @@ export class Classroom {
   })
   students: User[];
 
-  @ManyToOne(() => User)
+  @ManyToOne(() => User, { nullable: true })
   @JoinColumn({ name: 'teacher_id' })
-  teacher: User;
+  teacher: User | null;
 
   @ManyToMany(() => Course, (course) => course.classrooms)
   @JoinTable({

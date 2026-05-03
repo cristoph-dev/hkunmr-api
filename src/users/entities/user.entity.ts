@@ -11,6 +11,7 @@ import {
 import { Role } from './role.entity';
 import { UserCourse } from 'src/courses/entities/course-user.entity';
 import { Classroom } from 'src/classroom/entities/classroom.entity';
+import { Course } from 'src/courses/entities/course.entity';
 
 @Entity('users')
 export class User {
@@ -35,6 +36,9 @@ export class User {
   @Column({ default: false })
   email_verified: boolean;
 
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  profile_image: string | null;
+
   @ManyToMany(() => Role, (role) => role.users)
   @JoinTable({ name: 'users_roles' })
   roles: Role[];
@@ -44,6 +48,9 @@ export class User {
 
   @ManyToMany(() => Classroom, (classroom) => classroom.students)
   classrooms: Classroom[];
+
+  @OneToMany(() => Course, (course) => course.author)
+  authored_courses: Course[];
 
   @CreateDateColumn()
   created_at: Date;

@@ -6,9 +6,15 @@ import { Lesson } from './entities/lesson.entity';
 import { Course } from './entities/course.entity';
 import { UserCourse } from './entities/course-user.entity';
 import { UserLesson } from './entities/lesson-user.entity';
-import { CoursesController } from './controllers/courses.controller';
-import { LessonsController } from './controllers/lessons.controller';
-import { LessonStepsController } from './controllers/lesson-steps.controller';
+import { CoursesTeacherController } from './controllers/courses.controller';
+import { CoursesAdminController } from './controllers/courses-admin.controller';
+import { CoursesStudentController } from './controllers/courses-student.controller';
+import { LessonsStudentController } from './controllers/lessons.controller';
+import { LessonsTeacherController } from './controllers/lessons-teacher.controller';
+import { LessonsAdminController } from './controllers/lessons-admin.controller';
+import { LessonStepsStudentController } from './controllers/lesson-steps.controller';
+import { LessonStepsTeacherController } from './controllers/lesson-steps-teacher.controller';
+import { LessonStepsAdminController } from './controllers/lesson-steps-admin.controller';
 import { CoursesService } from './services/courses.service';
 import { LessonsService } from './services/lessons.service';
 import { LessonStepsService } from './services/lesson-steps.service';
@@ -33,7 +39,17 @@ import { Classroom } from 'src/classroom/entities/classroom.entity';
       Classroom,
     ]),
   ],
-  controllers: [CoursesController, LessonsController, LessonStepsController],
+  controllers: [
+    CoursesTeacherController,
+    CoursesAdminController,
+    CoursesStudentController,
+    LessonsStudentController,
+    LessonsTeacherController,
+    LessonsAdminController,
+    LessonStepsStudentController,
+    LessonStepsTeacherController,
+    LessonStepsAdminController,
+  ],
   providers: [
     CoursesService,
     LessonsService,
@@ -50,3 +66,4 @@ import { Classroom } from 'src/classroom/entities/classroom.entity';
   ],
 })
 export class CoursesModule { }
+

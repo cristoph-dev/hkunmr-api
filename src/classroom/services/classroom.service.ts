@@ -13,17 +13,20 @@ import { AssignClassroomStudentsDto } from '../dto/assign-classroom-students.dto
 import { UpdateClassroomDto } from '../dto/update-classroom.dto';
 import { AuthRole } from 'src/common/guards/role.guard';
 import type { UserPayload } from 'src/common/lib/types';
+import { CourseScope } from 'src/courses/entities/course.entity';
 
 interface ClassroomListItem {
   id: number;
   name: string;
   code: string;
+  is_active: boolean;
   teacher: {
     id: number;
     name: string;
     lastname: string;
     email: string;
-  };
+    profile_image: string | null;
+  } | null;
   students_count: number;
 }
 
@@ -31,17 +34,20 @@ interface ClassroomMembersResponse {
   id: number;
   name: string;
   code: string;
+  is_active: boolean;
   teacher: {
     id: number;
     name: string;
     lastname: string;
     email: string;
-  };
+    profile_image: string | null;
+  } | null;
   classmates: Array<{
     id: number;
     name: string;
     lastname: string;
     email: string;
+    profile_image: string | null;
   }>;
 }
 
@@ -51,6 +57,7 @@ interface ClassroomPodiumEntry {
   name: string;
   lastname: string;
   email: string;
+  profile_image: string | null;
   medals: number;
 }
 
@@ -115,7 +122,6 @@ export class ClassroomService {
       .createQueryBuilder('classroom')
       .leftJoinAndSelect('classroom.teacher', 'teacher')
       .leftJoinAndSelect('classroom.students', 'student')
-      .where('classroom.is_active = :isActive', { isActive: true })
       .orderBy('classroom.created_at', 'DESC');
 
     if (!isAdmin) {
@@ -144,7 +150,7 @@ export class ClassroomService {
     payload: UpdateClassroomDto,
     user: UserPayload,
   ): Promise<ClassroomMembersResponse> {
-    const classroom = await this.getClassroomWithMembersOrFail(classroomId);
+    const classroom = await this.getClassroomWithMembersOrFail(classroomId, true);
     this.assertCanManageClassroom(classroom, user);
 
     if (payload.name !== undefined) {
@@ -162,12 +168,18 @@ export class ClassroomService {
       );
     }
 
-    if (payload.teacher_id !== undefined) {
+    if (payload.teacher_id === null) {
+      classroom.teacher = null;
+    } else if (payload.teacher_id !== undefined) {
       classroom.teacher = await this.getEligibleTeacherOrFail(payload.teacher_id);
     }
 
     if (payload.student_ids !== undefined) {
       classroom.students = await this.getEligibleStudentsOrFail(payload.student_ids);
+    }
+
+    if (typeof payload.is_active === 'boolean') {
+      classroom.is_active = payload.is_active;
     }
 
     const saved = await this.classroomRepository.save(classroom);
@@ -225,11 +237,9 @@ export class ClassroomService {
     classroomId: number,
     user: UserPayload,
   ): Promise<{ success: boolean }> {
-    const classroom = await this.getClassroomWithMembersOrFail(classroomId);
+    const classroom = await this.getClassroomWithMembersOrFail(classroomId, true);
     this.assertCanManageClassroom(classroom, user);
-
-    classroom.is_active = false;
-    await this.classroomRepository.save(classroom);
+    await this.classroomRepository.remove(classroom);
 
     return { success: true };
   }
@@ -257,6 +267,7 @@ export class ClassroomService {
       })
       .innerJoin('user.roles', 'role')
       .leftJoin('user.courses', 'userCourse')
+      .leftJoin('userCourse.course', 'course')
       .leftJoin('userCourse.user_lessons', 'userLesson')
       .leftJoin('userLesson.user_steps', 'userStep')
       .where('user.is_active = :isActive', { isActive: true })
@@ -264,10 +275,24 @@ export class ClassroomService {
       .andWhere('role.description = :studentRole', {
         studentRole: AuthRole.Student,
       })
+      .andWhere(
+        `(course.id IS NULL OR course.scope = :nativeScope OR course.author_id = :teacherId OR EXISTS (
+          SELECT 1
+          FROM classroom_courses cc
+          WHERE cc.course_id = course.id
+          AND cc.classroom_id = :classroomId
+        ))`,
+        {
+          nativeScope: CourseScope.NATIVE,
+          teacherId: classroom.teacher?.id ?? 0,
+          classroomId,
+        },
+      )
       .select('user.id', 'student_id')
       .addSelect('user.name', 'name')
       .addSelect('user.lastname', 'lastname')
       .addSelect('user.email', 'email')
+      .addSelect('user.profile_image', 'profile_image')
       .addSelect('COALESCE(SUM(userStep.medals_earned), 0)', 'medals')
       .groupBy('user.id')
       .orderBy('medals', 'DESC')
@@ -278,6 +303,7 @@ export class ClassroomService {
         name: string;
         lastname: string;
         email: string;
+        profile_image: string | null;
         medals: string;
       }>();
 
@@ -297,6 +323,7 @@ export class ClassroomService {
         name: row.name,
         lastname: row.lastname,
         email: row.email,
+        profile_image: row.profile_image ?? null,
         medals,
       };
     });
@@ -398,9 +425,12 @@ export class ClassroomService {
     return teacher;
   }
 
-  private async getClassroomWithMembersOrFail(classroomId: number): Promise<Classroom> {
+  private async getClassroomWithMembersOrFail(
+    classroomId: number,
+    includeInactive = false,
+  ): Promise<Classroom> {
     const classroom = await this.classroomRepository.findOne({
-      where: { id: classroomId, is_active: true },
+      where: includeInactive ? { id: classroomId } : { id: classroomId, is_active: true },
       relations: {
         teacher: true,
         students: true,
@@ -441,19 +471,15 @@ export class ClassroomService {
 
   private toClassroomListItem(
     classroom: Classroom,
-    teacher: User,
+    teacher: User | null,
     studentsCount: number,
   ): ClassroomListItem {
     return {
       id: classroom.id,
       name: classroom.name,
       code: classroom.code,
-      teacher: {
-        id: teacher.id,
-        name: teacher.name,
-        lastname: teacher.lastname,
-        email: teacher.email,
-      },
+      is_active: classroom.is_active,
+      teacher: this.toTeacherSummary(teacher),
       students_count: studentsCount,
     };
   }
@@ -469,19 +495,30 @@ export class ClassroomService {
         name: student.name,
         lastname: student.lastname,
         email: student.email,
+        profile_image: student.profile_image ?? null,
       }));
 
     return {
       id: classroom.id,
       name: classroom.name,
       code: classroom.code,
-      teacher: {
-        id: classroom.teacher.id,
-        name: classroom.teacher.name,
-        lastname: classroom.teacher.lastname,
-        email: classroom.teacher.email,
-      },
+      is_active: classroom.is_active,
+      teacher: this.toTeacherSummary(classroom.teacher),
       classmates,
+    };
+  }
+
+  private toTeacherSummary(teacher: User | null): ClassroomListItem['teacher'] {
+    if (!teacher) {
+      return null;
+    }
+
+    return {
+      id: teacher.id,
+      name: teacher.name,
+      lastname: teacher.lastname,
+      email: teacher.email,
+      profile_image: teacher.profile_image ?? null,
     };
   }
 }

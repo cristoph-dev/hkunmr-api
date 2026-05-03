@@ -99,6 +99,90 @@ export class LessonStepsService {
     }
   }
 
+  private normalizeGapPlaceholders(prompt: string): string {
+    return String(prompt ?? '').replace(
+      /\{\s*gap(\d+)\s*\}|\{\{\s*gap(\d+)\s*\}\}/gi,
+      (_match, single, double) => {
+        const index = Number(single ?? double);
+        return `{{gap${index}}}`;
+      },
+    );
+  }
+
+  private parseGapIndexes(prompt: string): number[] {
+    return [...prompt.matchAll(/{{\s*gap(\d+)\s*}}/gi)].map((m) =>
+      Number(m[1]),
+    );
+  }
+
+  private validateCodeCompletePayload(
+    promptRaw: string,
+    solutionRaw: string,
+    options: string[],
+    typed: boolean,
+  ): void {
+    const prompt = this.normalizeGapPlaceholders(promptRaw);
+    const indexes = this.parseGapIndexes(prompt);
+
+    if (indexes.length === 0) {
+      throw new BadRequestException(
+        `${typed ? 'CODE_COMPLETE_TYPED' : 'CODE_COMPLETE'} prompt must include {{gap1}}`,
+      );
+    }
+
+    const unique = [...new Set(indexes)].sort((a, b) => a - b);
+    if (unique.length !== indexes.length) {
+      throw new BadRequestException(
+        `${typed ? 'CODE_COMPLETE_TYPED' : 'CODE_COMPLETE'} prompt contains duplicated placeholders`,
+      );
+    }
+
+    const isContinuous = unique.every((value, i) => value === i + 1);
+    if (!isContinuous) {
+      throw new BadRequestException(
+        `${typed ? 'CODE_COMPLETE_TYPED' : 'CODE_COMPLETE'} placeholders must be continuous: {{gap1}}..{{gapN}}`,
+      );
+    }
+
+    if (unique.length !== 1) {
+      throw new BadRequestException(
+        `${typed ? 'CODE_COMPLETE_TYPED' : 'CODE_COMPLETE'} currently supports exactly one placeholder ({{gap1}})`,
+      );
+    }
+
+    const normalizedSolution = String(solutionRaw ?? '').trim();
+    if (!normalizedSolution) {
+      throw new BadRequestException(
+        `${typed ? 'CODE_COMPLETE_TYPED' : 'CODE_COMPLETE'} requires a non-empty solution`,
+      );
+    }
+
+    const normalizedOptions = Array.isArray(options)
+      ? options.map((o) => String(o).trim()).filter((o) => o.length > 0)
+      : [];
+
+    if (!typed) {
+      if (normalizedOptions.length < 2) {
+        throw new BadRequestException(
+          'CODE_COMPLETE requires at least 2 options',
+        );
+      }
+
+      if (!normalizedOptions.includes(normalizedSolution)) {
+        throw new BadRequestException(
+          'CODE_COMPLETE solution must be present in options',
+        );
+      }
+    } else if (
+      normalizedOptions.length > 0 &&
+      !normalizedOptions.includes(normalizedSolution)
+    ) {
+      throw new BadRequestException(
+        'CODE_COMPLETE_TYPED solution must be present in options when options are provided',
+      );
+    }
+  }
+
   private getLessonStepLessonColumnName(
     repository: Repository<LessonStep>,
   ): string {
@@ -287,7 +371,9 @@ export class LessonStepsService {
         );
       }
 
-      const createPrompt = lessonStepData.prompt ?? '';
+      const createPrompt = this.normalizeGapPlaceholders(
+        lessonStepData.prompt ?? '',
+      );
       const createSolution = lessonStepData.solution ?? '';
       const createOptions = lessonStepData.options ?? [];
 
@@ -296,6 +382,24 @@ export class LessonStepsService {
           createPrompt,
           createSolution,
           createOptions,
+        );
+      }
+
+      if (stepType.code === 'CODE_COMPLETE') {
+        this.validateCodeCompletePayload(
+          createPrompt,
+          createSolution,
+          createOptions,
+          false,
+        );
+      }
+
+      if (stepType.code === 'CODE_COMPLETE_TYPED') {
+        this.validateCodeCompletePayload(
+          createPrompt,
+          createSolution,
+          createOptions,
+          true,
         );
       }
 
@@ -356,7 +460,7 @@ export class LessonStepsService {
       const stepTypeRepository = manager.getRepository(LessonStepType);
 
       const step = await stepRepository.findOne({
-        where: { id, is_active: true },
+        where: { id },
         relations: ['lesson', 'lessonStepType'],
       });
 
@@ -373,7 +477,7 @@ export class LessonStepsService {
       }
 
       if (typeof lessonStepData.prompt === 'string') {
-        step.prompt = lessonStepData.prompt;
+        step.prompt = this.normalizeGapPlaceholders(lessonStepData.prompt);
       }
 
       if (typeof lessonStepData.solution === 'string') {
@@ -438,6 +542,31 @@ export class LessonStepsService {
         );
       }
 
+      if (
+        currentStepTypeCode === 'CODE_COMPLETE' ||
+        currentStepTypeCode === 'CODE_COMPLETE_TYPED'
+      ) {
+        const optionsForValidation = Array.isArray(lessonStepData.options)
+          ? lessonStepData.options
+          : (() => {
+              try {
+                const parsed = JSON.parse(step.options || '[]');
+                return Array.isArray(parsed)
+                  ? parsed.map((o) => String(o))
+                  : [];
+              } catch {
+                return [];
+              }
+            })();
+
+        this.validateCodeCompletePayload(
+          step.prompt ?? '',
+          step.solution ?? '',
+          optionsForValidation,
+          currentStepTypeCode === 'CODE_COMPLETE_TYPED',
+        );
+      }
+
       const targetLessonId = lessonStepData.lesson_id ?? step.lesson.id;
       if (typeof lessonStepData.lesson_id === 'number') {
         const lesson = await lessonRepository.findOne({
@@ -485,7 +614,7 @@ export class LessonStepsService {
       }
 
       const refreshed = await stepRepository.findOne({
-        where: { id, is_active: true },
+        where: { id },
         relations: ['lesson', 'lessonStepType'],
       });
 

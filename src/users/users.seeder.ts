@@ -89,8 +89,8 @@ class UsersSeeder {
 
         const hashedPassword = await bcrypt.hash(process.env.ADMIN_USERPASS!, 10);
 
-        const users = await Promise.all([
-            this.queryRunner.manager.save(User, {
+        const baseUsers: Array<Partial<User>> = [
+            {
                 name: 'Admin',
                 lastname: 'User',
                 email: 'admin@unimar.edu.ve',
@@ -98,8 +98,8 @@ class UsersSeeder {
                 is_active: true,
                 email_verified: true,
                 roles: [adminRole],
-            }),
-            this.queryRunner.manager.save(User, {
+            },
+            {
                 name: 'Student',
                 lastname: 'User',
                 email: 'student@unimar.edu.ve',
@@ -107,8 +107,8 @@ class UsersSeeder {
                 is_active: true,
                 email_verified: true,
                 roles: [studentRole],
-            }),
-            this.queryRunner.manager.save(User, {
+            },
+            {
                 name: 'Student',
                 lastname: 'Two',
                 email: 'student2@unimar.edu.ve',
@@ -116,8 +116,8 @@ class UsersSeeder {
                 is_active: true,
                 email_verified: true,
                 roles: [studentRole],
-            }),
-            this.queryRunner.manager.save(User, {
+            },
+            {
                 name: 'Student',
                 lastname: 'Three',
                 email: 'student3@unimar.edu.ve',
@@ -125,8 +125,8 @@ class UsersSeeder {
                 is_active: true,
                 email_verified: true,
                 roles: [studentRole],
-            }),
-            this.queryRunner.manager.save(User, {
+            },
+            {
                 name: 'Professor',
                 lastname: 'User',
                 email: 'professor@unimar.edu.ve',
@@ -134,8 +134,37 @@ class UsersSeeder {
                 is_active: true,
                 email_verified: true,
                 roles: [professorRole],
-            }),
-        ]);
+            },
+        ];
+
+        const additionalStudents: Array<Partial<User>> = Array.from({ length: 10 }, (_, index) => {
+            const studentNumber = index + 4;
+            return {
+                name: 'Student',
+                lastname: `Extra${studentNumber}`,
+                email: `student${studentNumber}@unimar.edu.ve`,
+                password: hashedPassword,
+                is_active: true,
+                email_verified: true,
+                roles: [studentRole],
+            };
+        });
+
+        const additionalProfessor: Partial<User> = {
+            name: 'Professor',
+            lastname: 'Two',
+            email: 'professor2@unimar.edu.ve',
+            password: hashedPassword,
+            is_active: true,
+            email_verified: true,
+            roles: [professorRole],
+        };
+
+        const users = await Promise.all(
+            [...baseUsers, ...additionalStudents, additionalProfessor].map((payload) =>
+                this.queryRunner.manager.save(User, payload),
+            ),
+        );
 
         console.log(`            Created ${users.length} users:`);
         users.forEach((u: any) => console.log(`              - ${u.email}`));

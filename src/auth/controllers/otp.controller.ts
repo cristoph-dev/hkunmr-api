@@ -6,7 +6,7 @@ import { SuccessResponseDto } from '@common/dto';
 import { Public } from '@common/decorators/public.decorator';
 
 @Public()
-@ApiTags('auth')
+@ApiTags('Auth')
 @Controller('otp')
 export class OtpController {
   constructor(private readonly otpService: OtpService) {}

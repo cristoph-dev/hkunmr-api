@@ -8,11 +8,14 @@ import { CreateLessonDto } from '../dto/create-lesson.dto';
 import { UpdateLessonDto } from '../dto/update-lesson.dto';
 import { UserCourse } from '../entities/course-user.entity';
 import { UserLesson } from '../entities/lesson-user.entity';
+import { LessonStep } from '../entities/lesson-step.entity';
 import { ProgressEnum } from 'src/common/lib/const';
 import { ReorderLessonDto } from '../dto/reorder-lesson.dto';
 
 @Injectable()
 export class LessonsService {
+  private static readonly ORDER_SHIFT_BUFFER = 100000;
+
   constructor(
     @InjectRepository(Lesson)
     private readonly lessonRepository: Repository<Lesson>,
@@ -228,24 +231,40 @@ export class LessonsService {
         await lessonRepository
           .createQueryBuilder()
           .update(Lesson)
-          .set({ order: () => '`order` + 1' })
+          .set({ order: () => `\`order\` + ${LessonsService.ORDER_SHIFT_BUFFER}` })
           .where(`${courseColumn} = :courseId`, { courseId: sourceCourseId })
-          .andWhere('is_active = :isActive', { isActive: true })
           .andWhere('`order` >= :newOrder AND `order` < :oldOrder', {
             newOrder,
             oldOrder,
+          })
+          .execute();
+        await lessonRepository
+          .createQueryBuilder()
+          .update(Lesson)
+          .set({ order: () => `\`order\` - ${LessonsService.ORDER_SHIFT_BUFFER - 1}` })
+          .where(`${courseColumn} = :courseId`, { courseId: sourceCourseId })
+          .andWhere('`order` >= :buffer', {
+            buffer: LessonsService.ORDER_SHIFT_BUFFER,
           })
           .execute();
       } else if (newOrder > oldOrder) {
         await lessonRepository
           .createQueryBuilder()
           .update(Lesson)
-          .set({ order: () => '`order` - 1' })
+          .set({ order: () => `\`order\` + ${LessonsService.ORDER_SHIFT_BUFFER}` })
           .where(`${courseColumn} = :courseId`, { courseId: sourceCourseId })
-          .andWhere('is_active = :isActive', { isActive: true })
           .andWhere('`order` <= :newOrder AND `order` > :oldOrder', {
             newOrder,
             oldOrder,
+          })
+          .execute();
+        await lessonRepository
+          .createQueryBuilder()
+          .update(Lesson)
+          .set({ order: () => `\`order\` - ${LessonsService.ORDER_SHIFT_BUFFER + 1}` })
+          .where(`${courseColumn} = :courseId`, { courseId: sourceCourseId })
+          .andWhere('`order` >= :buffer', {
+            buffer: LessonsService.ORDER_SHIFT_BUFFER,
           })
           .execute();
       }
@@ -253,19 +272,35 @@ export class LessonsService {
       await lessonRepository
         .createQueryBuilder()
         .update(Lesson)
-        .set({ order: () => '`order` - 1' })
+        .set({ order: () => `\`order\` + ${LessonsService.ORDER_SHIFT_BUFFER}` })
         .where(`${courseColumn} = :sourceCourseId`, { sourceCourseId })
-        .andWhere('is_active = :isActive', { isActive: true })
         .andWhere('`order` > :oldOrder', { oldOrder })
+        .execute();
+      await lessonRepository
+        .createQueryBuilder()
+        .update(Lesson)
+        .set({ order: () => `\`order\` - ${LessonsService.ORDER_SHIFT_BUFFER + 1}` })
+        .where(`${courseColumn} = :sourceCourseId`, { sourceCourseId })
+        .andWhere('`order` >= :buffer', {
+          buffer: LessonsService.ORDER_SHIFT_BUFFER,
+        })
         .execute();
 
       await lessonRepository
         .createQueryBuilder()
         .update(Lesson)
-        .set({ order: () => '`order` + 1' })
+        .set({ order: () => `\`order\` + ${LessonsService.ORDER_SHIFT_BUFFER}` })
         .where(`${courseColumn} = :targetCourseId`, { targetCourseId })
-        .andWhere('is_active = :isActive', { isActive: true })
         .andWhere('`order` >= :newOrder', { newOrder })
+        .execute();
+      await lessonRepository
+        .createQueryBuilder()
+        .update(Lesson)
+        .set({ order: () => `\`order\` - ${LessonsService.ORDER_SHIFT_BUFFER - 1}` })
+        .where(`${courseColumn} = :targetCourseId`, { targetCourseId })
+        .andWhere('`order` >= :buffer', {
+          buffer: LessonsService.ORDER_SHIFT_BUFFER,
+        })
         .execute();
     }
 
@@ -342,10 +377,18 @@ export class LessonsService {
       await lessonRepository
         .createQueryBuilder()
         .update(Lesson)
-        .set({ order: () => '`order` + 1' })
+        .set({ order: () => `\`order\` + ${LessonsService.ORDER_SHIFT_BUFFER}` })
         .where(`${courseColumn} = :courseId`, { courseId: lessonData.course_id })
-        .andWhere('is_active = :isActive', { isActive: true })
         .andWhere('`order` >= :targetOrder', { targetOrder })
+        .execute();
+      await lessonRepository
+        .createQueryBuilder()
+        .update(Lesson)
+        .set({ order: () => `\`order\` - ${LessonsService.ORDER_SHIFT_BUFFER - 1}` })
+        .where(`${courseColumn} = :courseId`, { courseId: lessonData.course_id })
+        .andWhere('`order` >= :buffer', {
+          buffer: LessonsService.ORDER_SHIFT_BUFFER,
+        })
         .execute();
 
       const lesson = lessonRepository.create({
@@ -372,33 +415,37 @@ export class LessonsService {
     return await this.lessonRepository.manager.transaction(async (manager) => {
       const lessonRepository = manager.getRepository(Lesson);
 
-      const hasReorderPayload =
-        typeof lessonData.order === 'number' ||
-        typeof lessonData.course_id === 'number';
-
-      if (hasReorderPayload) {
-        const currentLesson = await lessonRepository.findOne({
-          where: { id, is_active: true },
-          relations: ['course'],
-        });
-
-        if (!currentLesson) {
-          throw new NotFoundException(`Lesson with id ${id} not found`);
-        }
-
-        await this.reorderLessonInTransaction(manager, id, {
-          order: lessonData.order ?? currentLesson.order,
-          course_id: lessonData.course_id,
-        });
-      }
-
       const lesson = await lessonRepository.findOne({
-        where: { id, is_active: true },
+        where: { id },
         relations: ['course'],
       });
 
       if (!lesson) {
         throw new NotFoundException(`Lesson with id ${id} not found`);
+      }
+
+      const hasReorderPayload =
+        typeof lessonData.order === 'number' ||
+        typeof lessonData.course_id === 'number';
+
+      // Only active lessons can be reordered/moved.
+      // This allows PATCH with is_active=true to reactivate without 404,
+      // even if the frontend sends order/course_id in the payload.
+      if (hasReorderPayload && lesson.is_active) {
+        await this.reorderLessonInTransaction(manager, id, {
+          order: lessonData.order ?? lesson.order,
+          course_id: lessonData.course_id,
+        });
+
+        const refreshedAfterReorder = await lessonRepository.findOne({
+          where: { id },
+          relations: ['course'],
+        });
+
+        if (!refreshedAfterReorder) {
+          throw new NotFoundException(`Lesson with id ${id} not found`);
+        }
+        Object.assign(lesson, refreshedAfterReorder);
       }
 
       if (typeof lessonData.title === 'string') {
@@ -424,9 +471,45 @@ export class LessonsService {
   }
 
   async remove(id: number): Promise<void> {
-    const lesson = await this.findOne(id);
-    lesson.is_active = false;
-    await this.lessonRepository.save(lesson);
+    await this.lessonRepository.manager.transaction(async (manager) => {
+      const lessonRepository = manager.getRepository(Lesson);
+      const stepRepository = manager.getRepository(LessonStep);
+      const courseColumn = this.getLessonCourseColumnName(lessonRepository);
+
+      const lesson = await lessonRepository.findOne({
+        where: { id, is_active: true },
+        relations: ['course'],
+      });
+
+      if (!lesson) {
+        throw new NotFoundException(`Lesson with id ${id} not found`);
+      }
+
+      const courseId = lesson.course.id;
+      const oldOrder = lesson.order;
+
+      await stepRepository.delete({ lesson: { id } });
+      await lessonRepository.delete({ id });
+
+      await lessonRepository
+        .createQueryBuilder()
+        .update(Lesson)
+        .set({ order: () => `\`order\` + ${LessonsService.ORDER_SHIFT_BUFFER}` })
+        .where(`${courseColumn} = :courseId`, { courseId })
+        .andWhere('`order` > :oldOrder', { oldOrder })
+        .execute();
+      await lessonRepository
+        .createQueryBuilder()
+        .update(Lesson)
+        .set({ order: () => `\`order\` - ${LessonsService.ORDER_SHIFT_BUFFER + 1}` })
+        .where(`${courseColumn} = :courseId`, { courseId })
+        .andWhere('`order` >= :buffer', {
+          buffer: LessonsService.ORDER_SHIFT_BUFFER,
+        })
+        .execute();
+
+      await this.rebalanceCourseProgressFrontier(courseId, manager);
+    });
   }
 
   async getAdminLessonsManagement(

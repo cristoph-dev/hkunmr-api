@@ -16,7 +16,7 @@ import { UpdateRoleDto } from '../dto/update-role.dto';
 import { Admin } from 'src/common/guards/role.guard';
 import { ApiBearerAuth } from '@nestjs/swagger';
 
-@ApiTags('roles')
+@ApiTags('Roles [Admin-only]')
 @ApiBearerAuth()
 @Admin()
 @Controller('roles')

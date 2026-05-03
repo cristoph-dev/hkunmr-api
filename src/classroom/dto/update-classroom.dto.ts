@@ -2,6 +2,7 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
   ArrayUnique,
   IsArray,
+  IsBoolean,
   IsInt,
   IsOptional,
   IsString,
@@ -33,12 +34,13 @@ export class UpdateClassroomDto {
 
   @ApiPropertyOptional({
     example: 4,
-    description: 'ID del profesor a asignar al salon',
+    description: 'ID del profesor a asignar al salon. Envia null para desasignarlo',
+    nullable: true,
   })
   @IsOptional()
   @IsInt()
   @Min(1)
-  teacher_id?: number;
+  teacher_id?: number | null;
 
   @ApiPropertyOptional({
     example: [3, 5, 7],
@@ -52,4 +54,12 @@ export class UpdateClassroomDto {
   @IsInt({ each: true })
   @Min(1, { each: true })
   student_ids?: number[];
+
+  @ApiPropertyOptional({
+    example: true,
+    description: 'Estado activo del salon',
+  })
+  @IsOptional()
+  @IsBoolean()
+  is_active?: boolean;
 }

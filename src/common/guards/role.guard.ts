@@ -45,6 +45,13 @@ export class RolesGuard implements CanActivate {
       return true;
     }
 
+    const isTeacher = userRoles.includes(AuthRole.Teacher);
+    const endpointRequiresStudent = roles.includes(AuthRole.Student);
+
+    if (isTeacher && endpointRequiresStudent) {
+      return true;
+    }
+
     return Boolean(intersect(userRoles, roles).length);
   }
 }

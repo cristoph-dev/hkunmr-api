@@ -23,12 +23,13 @@ import { JwtPayload } from '../strategies/jwt.strategy';
 // fix: registrarle su rol
 import { AuthRole } from 'src/common/guards/role.guard';
 //fix2: registrarle siempre el 1er curso 
-import { Course } from 'src/courses/entities/course.entity';
+import { Course, CourseScope } from 'src/courses/entities/course.entity';
 import { UserCourse } from 'src/courses/entities/course-user.entity';
 import { Lesson } from 'src/courses/entities/lesson.entity';
 import { UserLesson } from 'src/courses/entities/lesson-user.entity';
 import { UserStep } from 'src/courses/entities/lesson-step-user.entity';
 import { ProgressEnum } from 'src/common/lib/const';
+import { Classroom } from 'src/classroom/entities/classroom.entity';
 
 @Injectable()
 export class AuthService {
@@ -118,6 +119,13 @@ export class AuthService {
   }
 
   private validateEmail(email: string): void {
+    const allowNonUnimarEmails =
+      this.configService.get<string>('ALLOW_NON_UNIMAR_EMAILS') === 'true';
+
+    if (allowNonUnimarEmails) {
+      return;
+    }
+
     if (!email.endsWith('@' + EmailDomain)) {
       throw new BadRequestException(
         'El correo electrónico debe pertenecer al dominio @' + EmailDomain,
@@ -325,7 +333,9 @@ export class AuthService {
       let coursesToEnroll: Course[] = []; // Determinar cursos según rol
 
       if (defaultRole.description === AuthRole.Student) {
-        const firstCourse = activeCourses.find((c) => c.id === 1);
+        const firstCourse = activeCourses.find(
+          (c) => c.scope === CourseScope.NATIVE && c.position === 1,
+        );
         if (firstCourse) {
           coursesToEnroll.push(firstCourse);
         }
@@ -393,13 +403,43 @@ export class AuthService {
     }
 
     const primaryRole = user.roles?.[0]?.description ?? '';
-    const pointsRow = await this.dataSource
+    const pointsQuery = this.dataSource
       .getRepository(UserStep)
       .createQueryBuilder('userStep')
       .innerJoin('userStep.user_lesson', 'userLesson')
       .innerJoin('userLesson.course_user', 'userCourse')
+      .innerJoin('userCourse.course', 'course')
       .innerJoin('userCourse.user', 'user')
-      .where('user.id = :userId', { userId })
+      .where('user.id = :userId', { userId });
+
+    if (primaryRole === AuthRole.Student) {
+      const activeClassroom = await this.dataSource
+        .getRepository(Classroom)
+        .createQueryBuilder('classroom')
+        .leftJoinAndSelect('classroom.teacher', 'teacher')
+        .innerJoin('classroom.students', 'student', 'student.id = :userId', {
+          userId,
+        })
+        .where('classroom.is_active = :isActive', { isActive: true })
+        .orderBy('classroom.created_at', 'ASC')
+        .getOne();
+
+      pointsQuery.andWhere(
+        `(course.scope = :nativeScope OR course.author_id = :teacherId OR EXISTS (
+          SELECT 1
+          FROM classroom_courses cc
+          WHERE cc.course_id = course.id
+          AND cc.classroom_id = :classroomId
+        ))`,
+        {
+          nativeScope: CourseScope.NATIVE,
+          teacherId: activeClassroom?.teacher?.id ?? 0,
+          classroomId: activeClassroom?.id ?? 0,
+        },
+      );
+    }
+
+    const pointsRow = await pointsQuery
       .select('COALESCE(SUM(userStep.medals_earned), 0)', 'points')
       .getRawOne<{ points: string | number }>();
 
@@ -410,6 +450,8 @@ export class AuthService {
       lastname: user.lastname,
       role: primaryRole,
       points,
+      profile_image: user.profile_image ?? null,
     };
   }
 }
+

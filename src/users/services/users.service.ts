@@ -10,8 +10,15 @@ interface AdminTeacherListItem {
   name: string;
   lastname: string;
   email: string;
+  profile_image: string | null;
   role: AuthRole;
+  is_active: boolean;
   classrooms_count: number;
+  students_count: number;
+  assigned_classroom: {
+    id: number;
+    title: string;
+  } | null;
 }
 
 interface StudentCandidateItem {
@@ -30,6 +37,33 @@ interface StudentCandidatesPaginated {
 
 interface AdminStudentListPaginated {
   items: StudentCandidateItem[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+interface StudentManagementItem {
+  id: number;
+  name: string;
+  lastname: string;
+  email: string;
+  profile_image: string | null;
+  role: AuthRole.Student;
+  is_active: boolean;
+  assigned_classroom: {
+    id: number;
+    title: string;
+    teacher: {
+      id: number;
+      name: string;
+      lastname: string;
+      profile_image: string | null;
+    } | null;
+  } | null;
+}
+
+interface StudentManagementPaginated {
+  items: StudentManagementItem[];
   total: number;
   page: number;
   limit: number;
@@ -136,8 +170,7 @@ export class UsersService {
       .leftJoinAndSelect('user.roles', 'role', 'role.is_active = :active', {
         active: true,
       })
-      .where('user.is_active = :isActive', { isActive: true })
-      .andWhere('role.description = :teacherRole', {
+      .where('role.description = :teacherRole', {
         teacherRole: AuthRole.Teacher,
       })
       .orderBy('user.name', 'ASC')
@@ -146,20 +179,43 @@ export class UsersService {
 
     return await Promise.all(
       teachers.map(async (teacher) => {
-        const classroomsCount = await this.classroomRepository.count({
+        const activeClassrooms = await this.classroomRepository.find({
           where: {
             teacher: { id: teacher.id },
             is_active: true,
           },
+          relations: { students: true },
+          order: { created_at: 'ASC' },
         });
+
+        const classroomsCount = activeClassrooms.length;
+        const assignedClassroom = activeClassrooms[0] ?? null;
+
+        const uniqueStudents = new Map<number, boolean>();
+        for (const classroom of activeClassrooms) {
+          for (const student of classroom.students ?? []) {
+            if (student.is_active) {
+              uniqueStudents.set(student.id, true);
+            }
+          }
+        }
 
         return {
           id: teacher.id,
           name: teacher.name,
           lastname: teacher.lastname,
           email: teacher.email,
+          profile_image: teacher.profile_image ?? null,
           role: AuthRole.Teacher,
+          is_active: teacher.is_active,
           classrooms_count: classroomsCount,
+          students_count: uniqueStudents.size,
+          assigned_classroom: assignedClassroom
+            ? {
+                id: assignedClassroom.id,
+                title: assignedClassroom.name,
+              }
+            : null,
         };
       }),
     );
@@ -230,7 +286,13 @@ export class UsersService {
   async updateMyProfileNames(
     userId: number,
     payload: { name?: string; lastname?: string },
-  ): Promise<{ id: number; name: string; lastname: string; email: string }> {
+  ): Promise<{
+    id: number;
+    name: string;
+    lastname: string;
+    email: string;
+    profile_image: string | null;
+  }> {
     const user = await this.userRepository.findOne({
       where: { id: userId, is_active: true },
     });
@@ -253,6 +315,33 @@ export class UsersService {
       name: updated.name,
       lastname: updated.lastname,
       email: updated.email,
+      profile_image: updated.profile_image ?? null,
+    };
+  }
+
+  async updateMyProfileImage(userId: number, imageUrl: string): Promise<{
+    id: number;
+    name: string;
+    lastname: string;
+    email: string;
+    profile_image: string | null;
+  }> {
+    const user = await this.userRepository.findOne({
+      where: { id: userId, is_active: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    user.profile_image = imageUrl;
+    const updated = await this.userRepository.save(user);
+    return {
+      id: updated.id,
+      name: updated.name,
+      lastname: updated.lastname,
+      email: updated.email,
+      profile_image: updated.profile_image ?? null,
     };
   }
 
@@ -386,6 +475,102 @@ export class UsersService {
         lastname: u.lastname,
         email: u.email,
       })),
+      total,
+      page: safePage,
+      limit: safeLimit,
+    };
+  }
+
+  async listStudentsForTeacherManagement(
+    _actor: { id: number; roles: string[] },
+    search?: string,
+    page = 1,
+    limit = 20,
+  ): Promise<StudentManagementPaginated> {
+    const safePage = Number.isFinite(page) && page > 0 ? page : 1;
+    const safeLimit =
+      Number.isFinite(limit) && limit > 0 ? Math.min(limit, 100) : 20;
+
+    const qb = this.userRepository
+      .createQueryBuilder('user')
+      .innerJoin('user.roles', 'role')
+      .where('role.is_active = :roleActive', { roleActive: true })
+      .andWhere('role.description = :studentRole', {
+        studentRole: AuthRole.Student,
+      });
+
+    if (search && search.trim().length > 0) {
+      const q = `%${search.trim()}%`;
+      qb.andWhere(
+        '(user.name LIKE :q OR user.lastname LIKE :q OR user.email LIKE :q)',
+        { q },
+      );
+    }
+
+    const [pagedUsers, total] = await qb
+      .orderBy('user.name', 'ASC')
+      .addOrderBy('user.lastname', 'ASC')
+      .skip((safePage - 1) * safeLimit)
+      .take(safeLimit)
+      .getManyAndCount();
+
+    const ids = pagedUsers.map((user) => user.id);
+    if (ids.length === 0) {
+      return {
+        items: [],
+        total,
+        page: safePage,
+        limit: safeLimit,
+      };
+    }
+
+    const usersWithClassrooms = await this.userRepository
+      .createQueryBuilder('user')
+      .leftJoinAndSelect(
+        'user.classrooms',
+        'classroom',
+        'classroom.is_active = :classroomActive',
+        { classroomActive: true },
+      )
+      .leftJoinAndSelect('classroom.teacher', 'teacher')
+      .where('user.id IN (:...ids)', { ids })
+      .getMany();
+
+    const byId = new Map(usersWithClassrooms.map((user) => [user.id, user]));
+
+    return {
+      items: pagedUsers.map((user) => {
+        const hydrated = byId.get(user.id);
+        const classrooms = (hydrated?.classrooms ?? []).filter(
+          (classroom) => classroom.is_active,
+        );
+        const selectedClassroom = classrooms[0] ?? null;
+
+        return {
+          id: user.id,
+          name: user.name,
+          lastname: user.lastname,
+          email: user.email,
+          profile_image: user.profile_image ?? null,
+          role: AuthRole.Student,
+          is_active: user.is_active,
+          assigned_classroom: selectedClassroom
+            ? {
+                id: selectedClassroom.id,
+                title: selectedClassroom.name,
+                teacher: selectedClassroom.teacher
+                  ? {
+                      id: selectedClassroom.teacher.id,
+                      name: selectedClassroom.teacher.name,
+                      lastname: selectedClassroom.teacher.lastname,
+                      profile_image:
+                        selectedClassroom.teacher.profile_image ?? null,
+                    }
+                  : null,
+              }
+            : null,
+        };
+      }),
       total,
       page: safePage,
       limit: safeLimit,

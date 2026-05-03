@@ -20,6 +20,8 @@ interface SubmitStepAnswerResponse {
   is_answered: boolean;
   attempts_count: number;
   medals_earned: number;
+  awarded_medals: number;
+  remaining_medal_tier: number;
   lesson_progress: ProgressEnum;
 }
 
@@ -64,14 +66,25 @@ export class UserLessonsService {
     return sortedLeft.every((item, index) => item === sortedRight[index]);
   }
 
+  private areStringArraysEqual(left: string[], right: string[]): boolean {
+    if (left.length !== right.length) {
+      return false;
+    }
+
+    return left.every((item, index) => item === right[index]);
+  }
+
   private medalsForAttempts(attempts: number): number {
     if (attempts <= 1) {
-      return 10;
+      return 3;
     }
     if (attempts === 2) {
-      return 7;
+      return 2;
     }
-    return 5;
+    if (attempts === 3) {
+      return 1;
+    }
+    return 0;
   }
 
   private evaluateAnswer(
@@ -110,7 +123,7 @@ export class UserLessonsService {
       };
     }
 
-    if (stepTypeCode === 'MULTIPLE_CHOICE' || stepTypeCode === 'THEORY_COMPLETE') {
+    if (stepTypeCode === 'MULTIPLE_CHOICE') {
       if (!rawAnswers.length) {
         throw new BadRequestException('Answers are required for this step type');
       }
@@ -122,6 +135,26 @@ export class UserLessonsService {
 
       return {
         isCorrect: this.areStringSetsEqual(normalizedAnswers, expectedSet),
+        serializedAnswer: JSON.stringify(rawAnswers),
+        isEvaluable: true,
+      };
+    }
+
+    if (stepTypeCode === 'THEORY_COMPLETE') {
+      if (!rawAnswers.length) {
+        throw new BadRequestException('Answers are required for this step type');
+      }
+
+      const normalizedAnswers = rawAnswers.map((value) =>
+        this.normalizeText(String(value)),
+      );
+      const expectedSequence = this.parseJsonArray(step.solution ?? '[]');
+
+      return {
+        isCorrect: this.areStringArraysEqual(
+          normalizedAnswers,
+          expectedSequence,
+        ),
         serializedAnswer: JSON.stringify(rawAnswers),
         isEvaluable: true,
       };
@@ -271,6 +304,8 @@ export class UserLessonsService {
             is_answered: true,
             attempts_count: userStep.attempts_count,
             medals_earned: userStep.medals_earned,
+            awarded_medals: 0,
+            remaining_medal_tier: 0,
             lesson_progress: enrollment.progress,
           };
         }
@@ -323,6 +358,10 @@ export class UserLessonsService {
           is_answered: userStep.is_answered,
           attempts_count: userStep.attempts_count,
           medals_earned: userStep.medals_earned,
+          awarded_medals: medals,
+          remaining_medal_tier: evaluation.isCorrect
+            ? 0
+            : this.medalsForAttempts(attempts + 1),
           lesson_progress: enrollment.progress,
         };
       },

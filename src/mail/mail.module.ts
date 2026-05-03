@@ -21,7 +21,7 @@ import { MailService } from './mail.service';
           },
         },
         defaults: {
-          from: `"No reply" <${configService.get('MAIL_FROM')}>`,
+          from: `"${configService.get('MAIL_FROM_NAME') || 'Cyberia.dev'}" <${configService.get('MAIL_FROM')}>`,
         },
         template: {
           dir: join(__dirname, 'templates'),

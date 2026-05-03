@@ -35,7 +35,7 @@ import { JwtRefreshGuard } from '../guards/jwt-refresh.guard';
 import { Public } from 'src/common/decorators/public.decorator';
 import { AuthenticatedUser } from 'src/common/decorators/authenticated.decorator';
 
-@ApiTags('auth')
+@ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
@@ -49,8 +49,8 @@ export class AuthController {
     schema: {
       type: 'object',
       properties: {
-        username: { type: 'string', example: 'admin@hkunmr.com' },
-        password: { type: 'string', example: 'Admin1!' },
+        username: { type: 'string', example: 'cavila.8492@unimar.edu.ve' },
+        password: { type: 'string', example: 'Cristopher123?' },
       },
     },
   })
